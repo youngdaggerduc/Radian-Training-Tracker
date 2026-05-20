@@ -1,37 +1,19 @@
-import { useState, useEffect } from 'react';
-import { Icon } from './components/icons';
-import { LoginPage } from './components/login';
-import { Modal, AddLeadModal, FollowUpModal, ConvertToPaymentModal, RecordPaymentModal, EditPlanModal, EnrollModal, CertificateModal, CollectCertModal } from './components/modals';
-import { Dashboard, StatusPill } from './components/dashboard';
-import { LeadsView, FollowUpsView, LeadDrawer } from './components/leads';
-import { PaymentsView, EnrollmentView, CertificatesView, TraineeDrawer } from './components/payments';
-import { PipelineView } from './components/pipeline';
-import * as RD from './data';
-import * as API from './api';
+// Main App: state management, sidebar nav, modal/drawer orchestration
+const { useState, useEffect, useMemo } = React;
+const RDM = window.RadianModals;
 
 function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState("dashboard");
-  const [state, setState] = useState({ leads: [], trainees: [] });
-  const [appLoading, setAppLoading] = useState(true);
-  const [modal, setModal] = useState(null);
-  const [drawer, setDrawer] = useState(null);
+  const [state, setState] = useState(() => RD.loadState() || RD.buildSeed());
+  const [modal, setModal] = useState(null); // {type, ...}
+  const [drawer, setDrawer] = useState(null); // {type:"lead"|"trainee", id}
   const [toast, setToast] = useState(null);
 
-  // Restore session from stored token on mount
+  // Auto-save
   useEffect(() => {
-    const stored = API.getStoredToken();
-    if (!stored) { setAppLoading(false); return; }
-    API.setToken(stored);
-    API.getMe()
-      .then(userData => {
-        setUser(userData);
-        return API.fetchState();
-      })
-      .then(data => setState(data))
-      .catch(() => API.clearToken())
-      .finally(() => setAppLoading(false));
-  }, []);
+    if (user) RD.saveState(state);
+  }, [state, user]);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -40,90 +22,34 @@ function App() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const showToast  = (msg) => setToast(msg);
-  const showError  = (msg) => setToast("⚠ " + msg);
+  const showToast = (msg) => setToast(msg);
 
-  const handleLogin = async (userData) => {
-    setUser(userData);
-    try {
-      const data = await API.fetchState();
-      setState(data);
-    } catch {
-      setState(RD.buildSeed());
-    }
-    showToast("Welcome to Radian Training Operations");
-  };
-
-  const handleLogout = () => {
-    API.clearToken();
-    setUser(null);
-    setView("dashboard");
-    setState({ leads: [], trainees: [] });
-    setModal(null);
-    setDrawer(null);
-  };
-
-  if (appLoading) {
-    return (
-      <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"var(--navy-900)",color:"var(--ivory)",fontFamily:"var(--sans)",fontSize:14,opacity:0.7}}>
-        Loading…
-      </div>
-    );
-  }
-
-  if (!user) return <LoginPage onLogin={handleLogin}/>;
+  if (!user) return <LoginPage onLogin={(u) => { setUser(u); showToast("Welcome to Radian Training Operations"); }}/>;
 
   // ============ DATA MUTATORS ============
-  const addLead = async (lead) => {
-    try {
-      const created = await API.createLead(lead);
-      setState(s => ({ ...s, leads: [created, ...s.leads] }));
-      showToast(`Lead created — ${created.name}`);
-      setModal(null);
-    } catch {
-      showError("Could not save lead — please try again");
-    }
+  const addLead = (lead) => {
+    setState(s => ({ ...s, leads: [lead, ...s.leads] }));
+    showToast(`Lead created — ${lead.name}`);
+    setModal(null);
   };
-
-  const updateLead = async (lead) => {
-    try {
-      const updated = await API.updateLead(lead);
-      setState(s => ({ ...s, leads: s.leads.map(l => l.id === lead.id ? updated : l) }));
-    } catch {
-      showError("Could not save changes — please try again");
-    }
+  const updateLead = (lead) => {
+    setState(s => ({ ...s, leads: s.leads.map(l => l.id === lead.id ? lead : l) }));
   };
-
   const convertToTrainee = (lead) => {
     setModal({ type: "convertPayment", lead });
   };
-
-  const completeConversion = async (trainee) => {
-    try {
-      const [created] = await Promise.all([
-        API.createTrainee(trainee),
-        API.deleteLead(trainee.leadId),
-      ]);
-      setState(s => ({
-        ...s,
-        trainees: [created, ...s.trainees],
-        leads: s.leads.filter(l => l.id !== trainee.leadId),
-      }));
-      showToast(`${trainee.name} converted to trainee — payment recorded`);
-      setModal(null);
-      setDrawer({ type: "trainee", id: created.id });
-    } catch {
-      showError("Could not complete conversion — please try again");
-    }
+  const completeConversion = (trainee) => {
+    setState(s => ({
+      ...s,
+      trainees: [trainee, ...s.trainees],
+      leads: s.leads.filter(l => l.id !== trainee.leadId),
+    }));
+    showToast(`${trainee.name} converted to trainee — payment recorded`);
+    setModal(null);
+    setDrawer({ type: "trainee", id: trainee.id });
   };
-
-  const updateTrainee = async (trainee) => {
-    try {
-      const updated = await API.updateTrainee(trainee);
-      setState(s => ({ ...s, trainees: s.trainees.map(t => t.id === trainee.id ? updated : t) }));
-    } catch {
-      showError("Could not save changes — please try again");
-    }
+  const updateTrainee = (trainee) => {
+    setState(s => ({ ...s, trainees: s.trainees.map(t => t.id === trainee.id ? trainee : t) }));
   };
 
   // ============ MODAL OPENER ============
@@ -140,33 +66,33 @@ function App() {
   const openDrawer = (d) => setDrawer(d);
 
   // ============ NAV ============
-  const newLeadCount   = state.leads.filter(l => l.status === "New Interest").length;
-  const todayFUCount   = state.leads.flatMap(l => l.followUps.filter(f => f.date === RD.todayISO() && !f.outcome)).length;
+  const newLeadCount = state.leads.filter(l => l.status === "New Interest").length;
+  const todayFUCount = state.leads.flatMap(l => l.followUps.filter(f => f.date === RD.todayISO() && !f.outcome)).length;
   const overdueFUCount = state.leads.flatMap(l => l.followUps.filter(f => RD.daysUntil(f.date) < 0 && !f.outcome)).length;
-  const overduePay     = state.trainees.flatMap(t => t.plan.filter(p => !p.paid && RD.daysUntil(p.due) < 0)).length;
-  const certReady      = state.trainees.filter(t => t.certificate?.status === "Ready for Collection").length;
+  const overduePay = state.trainees.flatMap(t => t.plan.filter(p => !p.paid && RD.daysUntil(p.due) < 0)).length;
+  const certReady = state.trainees.filter(t => t.certificate?.status === "Ready for Collection").length;
 
   const navItems = [
-    { id: "dashboard",   label: "Dashboard",       icon: "dashboard" },
-    { id: "leads",       label: "Training Leads",  icon: "leads",    badge: newLeadCount || null },
-    { id: "followups",   label: "Follow-ups",      icon: "followups", badge: (todayFUCount + overdueFUCount) || null },
-    { id: "payments",    label: "Payments",        icon: "payments",  badge: overduePay || null },
-    { id: "enrollment",  label: "Enrollment",      icon: "enroll" },
-    { id: "certificates",label: "Certificates",    icon: "cert",      badge: certReady || null },
-    { id: "pipeline",    label: "Full Pipeline",   icon: "pipeline" },
+    { id: "dashboard", label: "Dashboard", icon: "dashboard" },
+    { id: "leads", label: "Training Leads", icon: "leads", badge: newLeadCount || null },
+    { id: "followups", label: "Follow-ups", icon: "followups", badge: (todayFUCount + overdueFUCount) || null },
+    { id: "payments", label: "Payments", icon: "payments", badge: overduePay || null },
+    { id: "enrollment", label: "Enrollment", icon: "enroll" },
+    { id: "certificates", label: "Certificates", icon: "cert", badge: certReady || null },
+    { id: "pipeline", label: "Full Pipeline", icon: "pipeline" },
   ];
 
   // ============ VIEW ROUTING ============
   const renderView = () => {
     switch (view) {
-      case "dashboard":    return <Dashboard state={state} setView={setView} openModal={openModal} openDrawer={openDrawer} currentUser={user}/>;
-      case "leads":        return <LeadsView state={state} openDrawer={openDrawer} openModal={openModal}/>;
-      case "followups":    return <FollowUpsView state={state} openDrawer={openDrawer} openModal={openModal} updateLead={updateLead}/>;
-      case "payments":     return <PaymentsView state={state} openDrawer={openDrawer} openModal={openModal}/>;
-      case "enrollment":   return <EnrollmentView state={state} openDrawer={openDrawer} openModal={openModal}/>;
+      case "dashboard": return <Dashboard state={state} setView={setView} openModal={openModal} openDrawer={openDrawer} currentUser={user}/>;
+      case "leads": return <LeadsView state={state} openDrawer={openDrawer} openModal={openModal}/>;
+      case "followups": return <FollowUpsView state={state} openDrawer={openDrawer} openModal={openModal} updateLead={updateLead}/>;
+      case "payments": return <PaymentsView state={state} openDrawer={openDrawer} openModal={openModal}/>;
+      case "enrollment": return <EnrollmentView state={state} openDrawer={openDrawer} openModal={openModal}/>;
       case "certificates": return <CertificatesView state={state} openDrawer={openDrawer} openModal={openModal}/>;
-      case "pipeline":     return <PipelineView state={state} openDrawer={openDrawer}/>;
-      default:             return null;
+      case "pipeline": return <PipelineView state={state} openDrawer={openDrawer}/>;
+      default: return null;
     }
   };
 
@@ -201,41 +127,42 @@ function App() {
     const close = () => setModal(null);
     switch (modal.type) {
       case "addLead":
-        return <AddLeadModal onClose={close} onSave={addLead}/>;
+        return <RDM.AddLeadModal onClose={close} onSave={addLead}/>;
       case "scheduleFollowup":
+        // pick first lead with no follow-up scheduled, else pick first
         return <ScheduleFromAnywhere state={state} onClose={close} onPicked={(lead, fu) => {
           updateLead({ ...lead, followUps: [fu, ...lead.followUps], status: "Follow Up Needed" });
           showToast(`Follow-up scheduled for ${lead.name}`);
           close();
         }}/>;
       case "followupFor":
-        return <FollowUpModal lead={modal.lead} onClose={close} onSave={(fu) => { modal.onSave(fu); showToast("Follow-up scheduled"); close(); }}/>;
+        return <RDM.FollowUpModal lead={modal.lead} onClose={close} onSave={(fu) => { modal.onSave(fu); showToast("Follow-up scheduled"); close(); }}/>;
       case "convertPayment":
-        return <ConvertToPaymentModal lead={modal.lead} onClose={close} onConvert={completeConversion}/>;
+        return <RDM.ConvertToPaymentModal lead={modal.lead} onClose={close} onConvert={completeConversion}/>;
       case "recordPayment":
-        return <RecordPaymentModal trainee={modal.trainee} installment={modal.installment}
+        return <RDM.RecordPaymentModal trainee={modal.trainee} installment={modal.installment}
           onClose={close} onRecord={(inst) => { modal.onRecord(inst); showToast(`Payment recorded — ${RD.fmtMoney(inst.amount)}`); close(); }}/>;
       case "editPlan":
-        return <EditPlanModal trainee={modal.trainee} onClose={close} onSave={(newPlan) => {
+        return <RDM.EditPlanModal trainee={modal.trainee} onClose={close} onSave={(newPlan) => {
           const newPaid = newPlan.filter(p => p.paid).reduce((s, p) => s + p.amount, 0);
           updateTrainee({ ...modal.trainee, plan: newPlan, paid: newPaid });
-          showToast(`Payment plan restructured — ${newPlan.filter(p => !p.paid).length} instalment${newPlan.filter(p=>!p.paid).length===1?"":"s"} remaining`);
+          showToast(`Payment plan restructured — ${newPlan.filter(p => !p.paid).length} installment${newPlan.filter(p=>!p.paid).length===1?"":"s"} remaining`);
           close();
         }}/>;
       case "enroll":
-        return <EnrollModal trainee={modal.trainee} onClose={close} onEnroll={(enrollment) => {
+        return <RDM.EnrollModal trainee={modal.trainee} onClose={close} onEnroll={(enrollment) => {
           updateTrainee({ ...modal.trainee, enrollment, stage: "enrolled" });
           showToast(`${modal.trainee.name} enrolled`);
           close();
         }}/>;
       case "issueCert":
-        return <CertificateModal trainee={modal.trainee} onClose={close} onIssue={(cert) => {
+        return <RDM.CertificateModal trainee={modal.trainee} onClose={close} onIssue={(cert) => {
           updateTrainee({ ...modal.trainee, certificate: cert, stage: "cert-ready" });
           showToast(`Certificate ${cert.number} ready for collection`);
           close();
         }}/>;
       case "collectCert":
-        return <CollectCertModal trainee={modal.trainee} onClose={close} onCollect={(cert) => {
+        return <RDM.CollectCertModal trainee={modal.trainee} onClose={close} onCollect={(cert) => {
           updateTrainee({ ...modal.trainee, certificate: cert, stage: "cert-collected" });
           showToast(`Certificate collected by ${cert.collectedBy}`);
           close();
@@ -268,7 +195,10 @@ function App() {
 
         <div className="nav-section">
           <div className="nav-section-label">Catalog</div>
-          <div className="nav-item" style={{cursor:"default", opacity: 0.85}}>
+          <div className="nav-item" onClick={() => {
+            const el = document.getElementById("course-catalog");
+            if (el) el.scrollIntoView({behavior:"smooth"});
+          }} style={{cursor:"default", opacity: 0.85}}>
             <Icon name="book" className="nav-icon" size={16}/>
             <span>Courses</span>
             <span className="nav-badge" style={{background:"rgba(255,255,255,0.12)"}}>{RD.COURSES.length}</span>
@@ -281,7 +211,7 @@ function App() {
             <div className="nm">{user.name}</div>
             <div className="rl">{user.role}</div>
           </div>
-          <button className="modal-close" style={{color:"rgba(255,255,255,0.5)"}} onClick={handleLogout} title="Sign out">
+          <button className="modal-close" style={{color:"rgba(255,255,255,0.5)"}} onClick={() => { setUser(null); setView("dashboard"); }} title="Sign out">
             <Icon name="logout" size={16}/>
           </button>
         </div>
@@ -310,7 +240,7 @@ function ScheduleFromAnywhere({ state, onClose, onPicked }) {
 
   if (step === "pick") {
     return (
-      <Modal title="Schedule Follow-up" sub="Pick a lead to schedule a follow-up for" onClose={onClose}>
+      <RDM.Modal title="Schedule Follow-up" sub="Pick a lead to schedule a follow-up for" onClose={onClose}>
         <div style={{maxHeight:380, overflowY:"auto", margin:"-8px 0"}}>
           {state.leads.length === 0 ? (
             <div className="empty"><div className="ttl">No leads to follow up on</div></div>
@@ -326,11 +256,13 @@ function ScheduleFromAnywhere({ state, onClose, onPicked }) {
             </div>
           ))}
         </div>
-      </Modal>
+      </RDM.Modal>
     );
   }
 
-  return <FollowUpModal lead={selected} onClose={onClose} onSave={(fu) => onPicked(selected, fu)}/>;
+  return <RDM.FollowUpModal lead={selected} onClose={onClose} onSave={(fu) => onPicked(selected, fu)}/>;
 }
 
-export default App;
+// ============ MOUNT ============
+const RD = window.RADIAN;
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
