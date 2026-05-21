@@ -280,8 +280,8 @@ function App() {
           </div>
         </div>
 
-        {/* Global search */}
-        <div style={{ padding: "12px 16px 0" }}>
+        {/* Global search — hidden on icon-only sidebar via CSS */}
+        <div className="sidebar-search-btn" style={{ padding: "12px 16px 0" }}>
           <button
             onClick={() => setSearchOpen(true)}
             style={{
@@ -300,7 +300,7 @@ function App() {
         <div className="nav-section">
           <div className="nav-section-label">Workspace</div>
           {navItems.map(item => (
-            <div key={item.id} className={"nav-item" + (view === item.id ? " active" : "")} onClick={() => setView(item.id)}>
+            <div key={item.id} className={"nav-item" + (view === item.id ? " active" : "")} onClick={() => setView(item.id)} title={item.label}>
               <Icon name={item.icon} className="nav-icon" size={16}/>
               <span>{item.label}</span>
               {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
@@ -323,6 +323,9 @@ function App() {
             <div className="nm">{user.name}</div>
             <div className="rl">{user.role}</div>
           </div>
+          <button className="modal-close" style={{color:"rgba(255,255,255,0.5)", marginBottom: 2}} onClick={() => setSearchOpen(true)} title="Search (Ctrl+K)">
+            <Icon name="search" size={14}/>
+          </button>
           <button className="modal-close" style={{color:"rgba(255,255,255,0.5)"}} onClick={() => setChangePwOpen(true)} title="Change password">
             <Icon name="settings" size={15}/>
           </button>
