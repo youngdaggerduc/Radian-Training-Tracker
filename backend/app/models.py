@@ -7,6 +7,7 @@ class User(models.Model):
     name = fields.CharField(max_length=200)
     initials = fields.CharField(max_length=5)
     role = fields.CharField(max_length=100, default="Training Coordinator")
+    is_admin = fields.BooleanField(default=False)
     hashed_password = fields.CharField(max_length=200)
 
     class Meta:

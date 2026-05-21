@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 def _user_out(u: User) -> dict:
-    return {"id": u.id, "name": u.name, "initials": u.initials, "role": u.role}
+    return {"id": u.id, "name": u.name, "initials": u.initials, "role": u.role, "isAdmin": u.is_admin}
 
 
 class LoginIn(BaseModel):

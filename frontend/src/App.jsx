@@ -6,6 +6,7 @@ import { Dashboard, StatusPill } from './components/dashboard';
 import { LeadsView, FollowUpsView, LeadDrawer } from './components/leads';
 import { PaymentsView, EnrollmentView, CertificatesView, TraineeDrawer } from './components/payments';
 import { PipelineView } from './components/pipeline';
+import { AdminView } from './components/admin';
 import * as RD from './data';
 import * as API from './api';
 
@@ -154,6 +155,7 @@ function App() {
     { id: "enrollment",  label: "Enrollment",      icon: "enroll" },
     { id: "certificates",label: "Certificates",    icon: "cert",      badge: certReady || null },
     { id: "pipeline",    label: "Full Pipeline",   icon: "pipeline" },
+    ...(user.isAdmin ? [{ id: "admin", label: "Staff Accounts", icon: "user" }] : []),
   ];
 
   // ============ VIEW ROUTING ============
@@ -166,6 +168,7 @@ function App() {
       case "enrollment":   return <EnrollmentView state={state} openDrawer={openDrawer} openModal={openModal}/>;
       case "certificates": return <CertificatesView state={state} openDrawer={openDrawer} openModal={openModal}/>;
       case "pipeline":     return <PipelineView state={state} openDrawer={openDrawer}/>;
+      case "admin":        return <AdminView currentUser={user}/>;
       default:             return null;
     }
   };

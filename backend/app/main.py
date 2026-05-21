@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from tortoise.contrib.fastapi import register_tortoise
 
 from app.config import TORTOISE_ORM
-from app.routers import api, auth as auth_router
+from app.routers import admin as admin_router, api, auth as auth_router
 
 app = FastAPI(title="Radian Training API")
 
@@ -20,6 +20,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router.router)
+app.include_router(admin_router.router)
 app.include_router(api.router)
 
 register_tortoise(
@@ -40,9 +41,9 @@ async def seed_users() -> None:
         return
 
     staff = [
-        {"id": "s1", "username": "aaliyah", "name": "Aaliyah Mohammed", "initials": "AM", "role": "Training Coordinator"},
-        {"id": "s2", "username": "devon",   "name": "Devon Ramcharan",  "initials": "DR", "role": "Training Coordinator"},
-        {"id": "s3", "username": "priya",   "name": "Priya Singh",      "initials": "PS", "role": "Training Coordinator"},
+        {"id": "s1", "username": "aaliyah", "name": "Aaliyah Mohammed", "initials": "AM", "role": "Training Coordinator", "is_admin": True},
+        {"id": "s2", "username": "devon",   "name": "Devon Ramcharan",  "initials": "DR", "role": "Training Coordinator", "is_admin": False},
+        {"id": "s3", "username": "priya",   "name": "Priya Singh",      "initials": "PS", "role": "Training Coordinator", "is_admin": False},
     ]
     default_pw = hash_password("radian2026")
     for u in staff:

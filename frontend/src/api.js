@@ -42,6 +42,12 @@ async function request(method, path, body, { noRedirect = false } = {}) {
 export const login  = (username, password) => request("POST", "/auth/login", { username, password }, { noRedirect: true });
 export const getMe  = ()                   => request("GET",  "/auth/me",    undefined,              { noRedirect: true });
 
+// Admin endpoints
+export const listUsers      = ()              => request("GET",    "/admin/users");
+export const createUser     = (data)          => request("POST",   "/admin/users",                    data);
+export const resetPassword  = (id, password)  => request("PATCH",  `/admin/users/${id}/password`,     { password });
+export const deleteUser     = (id)            => request("DELETE", `/admin/users/${id}`);
+
 // Protected data endpoints
 export const fetchState    = ()          => request("GET",    "/state");
 export const createLead    = (lead)      => request("POST",   "/leads",            lead);
