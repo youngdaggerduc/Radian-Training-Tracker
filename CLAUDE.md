@@ -30,6 +30,12 @@ When switching to Aerich, remove or disable `generate_schemas=True` in `app/main
 
 No test suite exists yet.
 
+**Port already in use (WinError 10013)** — if `uvicorn` fails with a socket permissions error, a background process is holding port 8001. Free it with:
+```powershell
+Get-NetTCPConnection -LocalPort 8001 | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }
+```
+Then re-run uvicorn normally.
+
 ## Architecture
 
 Two independent apps, connected only over HTTP:
