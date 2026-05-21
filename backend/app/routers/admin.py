@@ -4,7 +4,7 @@ from typing import Optional
 
 from app.auth import hash_password
 from app.deps import get_current_user
-from app.models import User
+from app.models import Course, User
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -89,3 +89,73 @@ async def delete_user(user_id: str, admin: User = Depends(require_admin)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     await user.delete()
+
+
+# ── Course catalog ────────────────────────────────────────────────────────────
+
+def _course_out(c: Course) -> dict:
+    return {"id": c.id, "provider": c.provider, "name": c.name, "price": c.price, "days": c.days, "active": c.active}
+
+
+async def _next_course_id() -> str:
+    ids = await Course.all().values_list("id", flat=True)
+    nums = [int(i[2:]) for i in ids if i.startswith("c-") and i[2:].isdigit()]
+    return f"c-{max(nums) + 1}" if nums else "c-1001"
+
+
+class CourseIn(BaseModel):
+    provider: str
+    name: str
+    price: float = 0
+    days: int = 1
+
+
+class CoursePatch(BaseModel):
+    provider: Optional[str] = None
+    name: Optional[str] = None
+    price: Optional[float] = None
+    days: Optional[int] = None
+    active: Optional[bool] = None
+
+
+@router.get("/courses")
+async def list_courses(current_user: User = Depends(get_current_user)):
+    courses = await Course.all().order_by("provider", "name")
+    return [_course_out(c) for c in courses]
+
+
+@router.post("/courses", status_code=201)
+async def create_course(body: CourseIn, admin: User = Depends(require_admin)):
+    new_id = await _next_course_id()
+    course = await Course.create(
+        id=new_id,
+        provider=body.provider.strip(),
+        name=body.name.strip(),
+        price=body.price,
+        days=body.days,
+    )
+    return _course_out(course)
+
+
+@router.patch("/courses/{course_id}")
+async def update_course(course_id: str, body: CoursePatch, admin: User = Depends(require_admin)):
+    course = await Course.get_or_none(id=course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    updates = {}
+    if body.provider is not None: updates["provider"] = body.provider.strip()
+    if body.name     is not None: updates["name"]     = body.name.strip()
+    if body.price    is not None: updates["price"]    = body.price
+    if body.days     is not None: updates["days"]     = body.days
+    if body.active   is not None: updates["active"]   = body.active
+    if updates:
+        await course.update_from_dict(updates).save()
+    return _course_out(course)
+
+
+@router.delete("/courses/{course_id}", status_code=204)
+async def delete_course(course_id: str, admin: User = Depends(require_admin)):
+    course = await Course.get_or_none(id=course_id)
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+    await course.delete()

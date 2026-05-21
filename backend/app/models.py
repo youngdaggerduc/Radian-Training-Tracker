@@ -1,6 +1,18 @@
 from tortoise import fields, models
 
 
+class Course(models.Model):
+    id       = fields.CharField(max_length=50, pk=True)
+    provider = fields.CharField(max_length=100, default="")
+    name     = fields.CharField(max_length=200)
+    price    = fields.FloatField(default=0)
+    days     = fields.IntField(default=1)
+    active   = fields.BooleanField(default=True)
+
+    class Meta:
+        table = "courses"
+
+
 class User(models.Model):
     id = fields.CharField(max_length=10, pk=True)       # "s1", "s2", "s3"
     username = fields.CharField(max_length=50, unique=True)

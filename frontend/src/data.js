@@ -311,6 +311,11 @@ export function traineeStage(t) {
   return "initial-payment";
 }
 
-export function getCourse(id) { return COURSES.find(c => c.id === id) || { name: "—", price: 0, days: 0, provider: "" }; }
-export function getStaff(id) { return STAFF.find(s => s.id === id) || { name: "—", initials: "?" }; }
+// Dynamic course list — updated from API at login, falls back to hardcoded COURSES
+let _courses = COURSES;
+export function setCourses(list) { if (list && list.length) _courses = list; }
+export function getAllCourses()  { return _courses; }
+export function getCourse(id)    { return _courses.find(c => c.id === id) || { name: "—", price: 0, days: 0, provider: "" }; }
+
+export function getStaff(id)      { return STAFF.find(s => s.id === id) || { name: "—", initials: "?" }; }
 export function getInstructor(id) { return INSTRUCTORS.find(i => i.id === id) || { name: "—" }; }

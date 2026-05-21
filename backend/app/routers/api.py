@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Any, Optional
 
 from app.deps import get_current_user
-from app.models import Lead, Trainee, User
+from app.models import Course, Lead, Trainee, User
 from app.seed import build_seed
 
 router = APIRouter(prefix="/api", tags=["api"], dependencies=[Depends(get_current_user)])
@@ -133,6 +133,10 @@ class TraineePatch(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+def course_out(c: Course) -> dict:
+    return {"id": c.id, "provider": c.provider, "name": c.name, "price": c.price, "days": c.days, "active": c.active}
+
+
 @router.get("/state")
 async def get_state():
     if await Lead.all().count() == 0 and await Trainee.all().count() == 0:
@@ -142,11 +146,13 @@ async def get_state():
         for data in seed_trainees:
             await Trainee.create(**data)
 
-    leads = await Lead.all()
+    leads    = await Lead.all()
     trainees = await Trainee.all()
+    courses  = await Course.all().order_by("provider", "name")
     return {
-        "leads": [lead_out(l) for l in leads],
+        "leads":    [lead_out(l) for l in leads],
         "trainees": [trainee_out(t) for t in trainees],
+        "courses":  [course_out(c) for c in courses],
     }
 
 

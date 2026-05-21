@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Icon } from './components/icons';
 import { LoginPage } from './components/login';
 import { Modal, AddLeadModal, FollowUpModal, ConvertToPaymentModal, RecordPaymentModal, EditPlanModal, EnrollModal, CertificateModal, CollectCertModal } from './components/modals';
@@ -8,6 +8,7 @@ import { PaymentsView, EnrollmentView, CertificatesView, TraineeDrawer } from '.
 import { PipelineView } from './components/pipeline';
 import { AdminView } from './components/admin';
 import { ExportsView } from './components/exports';
+import { SearchModal } from './components/search';
 import * as RD from './data';
 import * as API from './api';
 import logo from './assets/logo.png';
@@ -15,11 +16,13 @@ import logo from './assets/logo.png';
 function App() {
   const [user, setUser] = useState(null);
   const [view, setView] = useState("dashboard");
-  const [state, setState] = useState({ leads: [], trainees: [] });
+  const [state, setState] = useState({ leads: [], trainees: [], courses: [] });
   const [appLoading, setAppLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [drawer, setDrawer] = useState(null);
   const [toast, setToast] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [changePwOpen, setChangePwOpen] = useState(false);
 
   // Restore session from stored token on mount
   useEffect(() => {
@@ -31,7 +34,7 @@ function App() {
         setUser(userData);
         return API.fetchState();
       })
-      .then(data => setState(data))
+      .then(data => { RD.setCourses(data.courses); setState(data); })
       .catch(() => API.clearToken())
       .finally(() => setAppLoading(false));
   }, []);
@@ -46,10 +49,20 @@ function App() {
   const showToast  = (msg) => setToast(msg);
   const showError  = (msg) => setToast("⚠ " + msg);
 
+  // Ctrl+K global search
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") { e.preventDefault(); setSearchOpen(s => !s); }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
   const handleLogin = async (userData) => {
     setUser(userData);
     try {
       const data = await API.fetchState();
+      RD.setCourses(data.courses);
       setState(data);
     } catch {
       setState(RD.buildSeed());
@@ -61,10 +74,15 @@ function App() {
     API.clearToken();
     setUser(null);
     setView("dashboard");
-    setState({ leads: [], trainees: [] });
+    setState({ leads: [], trainees: [], courses: [] });
     setModal(null);
     setDrawer(null);
   };
+
+  const updateCourses = useCallback((courses) => {
+    RD.setCourses(courses);
+    setState(s => ({ ...s, courses }));
+  }, []);
 
   if (appLoading) {
     return (
@@ -172,7 +190,7 @@ function App() {
       case "certificates": return <CertificatesView state={state} openDrawer={openDrawer} openModal={openModal}/>;
       case "pipeline":     return <PipelineView state={state} openDrawer={openDrawer}/>;
       case "exports":      return <ExportsView state={state}/>;
-      case "admin":        return <AdminView currentUser={user}/>;
+      case "admin":        return <AdminView currentUser={user} courses={state.courses} onCoursesChange={updateCourses}/>;
       default:             return null;
     }
   };
@@ -262,6 +280,23 @@ function App() {
           </div>
         </div>
 
+        {/* Global search */}
+        <div style={{ padding: "12px 16px 0" }}>
+          <button
+            onClick={() => setSearchOpen(true)}
+            style={{
+              width: "100%", display: "flex", alignItems: "center", gap: 10,
+              padding: "8px 12px", borderRadius: "var(--radius)",
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.5)", fontSize: 12, cursor: "pointer", textAlign: "left",
+            }}
+          >
+            <Icon name="search" size={13}/>
+            <span style={{ flex: 1 }}>Search…</span>
+            <kbd style={{ fontSize: 9, opacity: 0.5, fontFamily: "var(--mono)", letterSpacing: "0.05em" }}>Ctrl K</kbd>
+          </button>
+        </div>
+
         <div className="nav-section">
           <div className="nav-section-label">Workspace</div>
           {navItems.map(item => (
@@ -278,7 +313,7 @@ function App() {
           <div className="nav-item" style={{cursor:"default", opacity: 0.85}}>
             <Icon name="book" className="nav-icon" size={16}/>
             <span>Courses</span>
-            <span className="nav-badge" style={{background:"rgba(255,255,255,0.12)"}}>{RD.COURSES.length}</span>
+            <span className="nav-badge" style={{background:"rgba(255,255,255,0.12)"}}>{RD.getAllCourses().filter(c => c.active !== false).length}</span>
           </div>
         </div>
 
@@ -288,6 +323,9 @@ function App() {
             <div className="nm">{user.name}</div>
             <div className="rl">{user.role}</div>
           </div>
+          <button className="modal-close" style={{color:"rgba(255,255,255,0.5)"}} onClick={() => setChangePwOpen(true)} title="Change password">
+            <Icon name="settings" size={15}/>
+          </button>
           <button className="modal-close" style={{color:"rgba(255,255,255,0.5)"}} onClick={handleLogout} title="Sign out">
             <Icon name="logout" size={16}/>
           </button>
@@ -301,12 +339,71 @@ function App() {
       {renderDrawer()}
       {renderModal()}
 
+      {searchOpen && (
+        <SearchModal state={state} onClose={() => setSearchOpen(false)} openDrawer={(d) => { setDrawer(d); setSearchOpen(false); }}/>
+      )}
+
+      {changePwOpen && (
+        <ChangePasswordModal onClose={() => setChangePwOpen(false)} onSuccess={() => { setChangePwOpen(false); showToast("Password updated"); }}/>
+      )}
+
       {toast && (
         <div className="toast-zone">
           <div className="toast"><span className="check"><Icon name="check" size={14}/></span> {toast}</div>
         </div>
       )}
     </div>
+  );
+}
+
+// ============ Change Password Modal ============
+function ChangePasswordModal({ onClose, onSuccess }) {
+  const [form, setForm] = useState({ current: "", next: "", confirm: "" });
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError("");
+    if (form.next.length < 6) { setError("New password must be at least 6 characters."); return; }
+    if (form.next !== form.confirm) { setError("New passwords do not match."); return; }
+    setBusy(true);
+    try {
+      await API.changeMyPassword(form.current, form.next);
+      onSuccess();
+    } catch (err) {
+      setError(err.message.includes("400") ? "Current password is incorrect." : "Could not update password.");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <Modal title="Change Password" sub="Update your login password." onClose={onClose}>
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="field">
+          <label>Current Password</label>
+          <input type="password" value={form.current} autoFocus autoComplete="current-password"
+            onChange={e => set("current", e.target.value)}/>
+        </div>
+        <div className="field">
+          <label>New Password <span style={{ opacity: 0.5, fontWeight: 400 }}>(min. 6 characters)</span></label>
+          <input type="password" value={form.next} autoComplete="new-password"
+            onChange={e => set("next", e.target.value)}/>
+        </div>
+        <div className="field">
+          <label>Confirm New Password</label>
+          <input type="password" value={form.confirm} autoComplete="new-password"
+            onChange={e => set("confirm", e.target.value)}/>
+        </div>
+        {error && <div style={{ color: "var(--red)", fontSize: 13 }}>{error}</div>}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+          <button type="submit" className="btn btn-orange" disabled={busy || !form.current || !form.next || !form.confirm}>
+            {busy ? "Saving…" : "Update Password"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

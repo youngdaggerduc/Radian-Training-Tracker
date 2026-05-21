@@ -3,7 +3,7 @@ import {
   fmtDate as fD, fmtDateShort as fDS, fmtMoney as fM,
   todayISO as tISO, daysUntil as dU, relTime as rT,
   getCourse as gC, getStaff as gS,
-  STAFF, COURSES,
+  getAllCourses, STAFF,
 } from '../data';
 
 export function Dashboard({ state, setView, openModal, openDrawer, currentUser }) {
@@ -133,6 +133,11 @@ export function Dashboard({ state, setView, openModal, openDrawer, currentUser }
         <StatCard label="Active Pipeline" value={leads.length + trainees.filter(t => t.stage !== "cert-collected").length} sub="across all stages" onClick={() => setView("pipeline")}/>
       </div>
 
+      <div className="two-col" style={{ marginTop: 0 }}>
+        <RevenueChart trainees={trainees}/>
+        <PipelineBreakdown leads={leads} trainees={trainees} setView={setView}/>
+      </div>
+
       <div className="two-col">
         <div className="panel">
           <div className="panel-header">
@@ -189,8 +194,12 @@ export function Dashboard({ state, setView, openModal, openDrawer, currentUser }
           </div>
           <div style={{padding:"0 18px 18px"}}>
             <div className="divider"></div>
-            <div className="kv"><span className="k">CISRS courses tracked</span><span className="v">6</span></div>
-            <div className="kv"><span className="k">GetmieSafe courses tracked</span><span className="v">4</span></div>
+            {[...new Set(getAllCourses().map(c => c.provider))].sort().map(p => (
+              <div key={p} className="kv">
+                <span className="k">{p} courses</span>
+                <span className="v">{getAllCourses().filter(c => c.provider === p && c.active).length}</span>
+              </div>
+            ))}
             <div className="kv"><span className="k">Active staff</span><span className="v">{STAFF.length}</span></div>
           </div>
         </div>
@@ -221,6 +230,109 @@ export function Dashboard({ state, setView, openModal, openDrawer, currentUser }
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+// ── Monthly Revenue Bar Chart ─────────────────────────────────────────────────
+function RevenueChart({ trainees }) {
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - i);
+    months.push({ key: d.toISOString().slice(0, 7), label: d.toLocaleDateString("en-GB", { month: "short" }), total: 0 });
+  }
+  for (const t of trainees) {
+    for (const p of t.plan) {
+      if (p.paid && p.paidOn) {
+        const m = months.find(m => m.key === p.paidOn.slice(0, 7));
+        if (m) m.total += p.amount;
+      }
+    }
+  }
+  const maxVal = Math.max(...months.map(m => m.total), 1);
+  const totalCollected = months.reduce((s, m) => s + m.total, 0);
+  const W = 440, H = 120, padB = 20, padL = 0, barW = 44, gap = (W - padL - months.length * barW) / (months.length + 1);
+
+  return (
+    <div className="panel">
+      <div className="panel-header">
+        <h3>Monthly Collections</h3>
+        <div className="meta">{fM(totalCollected)} — last 6 months</div>
+      </div>
+      <div style={{ padding: "20px 22px 18px" }}>
+        <svg width="100%" viewBox={`0 0 ${W} ${H + padB}`} style={{ overflow: "visible" }}>
+          {months.map((m, i) => {
+            const barH = m.total > 0 ? Math.max((m.total / maxVal) * H, 4) : 0;
+            const x = padL + gap + i * (barW + gap);
+            const y = H - barH;
+            const isLast = i === months.length - 1;
+            return (
+              <g key={m.key}>
+                {m.total > 0 && (
+                  <text x={x + barW / 2} y={y - 5} textAnchor="middle" fontSize={9} fill="var(--navy-500)" fontFamily="var(--mono)">
+                    {fM(m.total).replace("$", "")}
+                  </text>
+                )}
+                <rect
+                  x={x} y={y} width={barW} height={barH || 0} rx={3}
+                  fill={isLast ? "var(--orange)" : "var(--navy-700)"}
+                  opacity={isLast ? 1 : 0.7}
+                />
+                <text x={x + barW / 2} y={H + padB - 2} textAnchor="middle" fontSize={10} fill="var(--navy-400)" fontFamily="var(--sans)">
+                  {m.label}
+                </text>
+              </g>
+            );
+          })}
+          {/* baseline */}
+          <line x1={padL} y1={H} x2={W} y2={H} stroke="var(--navy-100)" strokeWidth={1}/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ── Pipeline Stage Breakdown ──────────────────────────────────────────────────
+function PipelineBreakdown({ leads, trainees, setView }) {
+  const segments = [
+    { label: "New Leads",       count: leads.filter(l => l.status === "New Interest").length,                       color: "var(--navy-300)", view: "leads" },
+    { label: "In Follow-up",    count: leads.filter(l => l.status !== "New Interest").length,                       color: "var(--navy-600)", view: "followups" },
+    { label: "Active Trainees", count: trainees.filter(t => !["cert-collected"].includes(t.stage)).length,          color: "var(--orange)",   view: "payments" },
+    { label: "Certs Collected", count: trainees.filter(t => t.stage === "cert-collected").length,                   color: "var(--green)",    view: "certificates" },
+  ];
+  const total = Math.max(segments.reduce((s, g) => s + g.count, 0), 1);
+
+  return (
+    <div className="panel">
+      <div className="panel-header">
+        <h3>Pipeline Breakdown</h3>
+        <div className="meta">{total} total across all stages</div>
+      </div>
+      <div style={{ padding: "20px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
+        {segments.map(seg => (
+          <div key={seg.label} style={{ cursor: "pointer" }} onClick={() => setView(seg.view)}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: "var(--navy-600)", fontWeight: 500 }}>{seg.label}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: "var(--navy-800)", fontVariantNumeric: "tabular-nums" }}>{seg.count}</span>
+            </div>
+            <div className="bar" style={{ height: 8 }}>
+              <div style={{ width: `${(seg.count / total) * 100}%`, background: seg.color, height: "100%", borderRadius: 100, transition: "width 0.4s ease" }}/>
+            </div>
+          </div>
+        ))}
+        <div style={{ marginTop: 4, paddingTop: 12, borderTop: "1px solid var(--navy-50)" }}>
+          <div className="kv" style={{ padding: "6px 0" }}>
+            <span className="k">Conversion rate (lead → trainee)</span>
+            <span className="v">{total > 0 ? Math.round((trainees.length / total) * 100) : 0}%</span>
+          </div>
+          <div className="kv" style={{ padding: "6px 0" }}>
+            <span className="k">Total enrolled / active</span>
+            <span className="v">{trainees.filter(t => t.enrollment && t.enrollment.status !== "Completed").length}</span>
+          </div>
+        </div>
       </div>
     </div>
   );

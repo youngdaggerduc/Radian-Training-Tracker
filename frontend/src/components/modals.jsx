@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Icon } from './icons';
 import {
-  COURSES, STAFF, INSTRUCTORS, LOCATIONS,
+  getAllCourses, STAFF, INSTRUCTORS, LOCATIONS,
   fmtDate, fmtMoney, todayISO, getCourse, getStaff, getInstructor,
 } from '../data';
 
@@ -32,7 +32,7 @@ export function Modal({ title, sub, onClose, children, footer, wide }) {
 export function AddLeadModal({ onClose, onSave }) {
   const [f, setF] = useState({
     name: "", company: "", phone: "", email: "",
-    courseId: COURSES[0].id, source: "Website", priority: "Medium",
+    courseId: getAllCourses()[0]?.id || "", source: "Website", priority: "Medium",
     notes: "", assignedTo: STAFF[0].id, inquiryDate: todayISO(),
   });
   const set = (k, v) => setF(s => ({ ...s, [k]: v }));
@@ -67,7 +67,7 @@ export function AddLeadModal({ onClose, onSave }) {
         <div className="field">
           <label>Course Interested In</label>
           <select value={f.courseId} onChange={e => set("courseId", e.target.value)}>
-            {COURSES.map(c => <option key={c.id} value={c.id}>{c.provider} · {c.name} — {fmtMoney(c.price)}</option>)}
+            {getAllCourses().filter(c => c.active !== false).map(c => <option key={c.id} value={c.id}>{c.provider} · {c.name} — {fmtMoney(c.price)}</option>)}
           </select>
         </div>
         <div className="field-row">
@@ -208,7 +208,7 @@ export function ConvertToPaymentModal({ lead, onClose, onConvert }) {
             const c = getCourse(e.target.value);
             setF(s => ({ ...s, courseId: e.target.value, totalCost: c.price, deposit: +(c.price * s.depositPct / 100).toFixed(2) }));
           }}>
-            {COURSES.map(c => <option key={c.id} value={c.id}>{c.provider} · {c.name} — {fmtMoney(c.price)}</option>)}
+            {getAllCourses().filter(c => c.active !== false).map(c => <option key={c.id} value={c.id}>{c.provider} · {c.name} — {fmtMoney(c.price)}</option>)}
           </select>
         </div>
 

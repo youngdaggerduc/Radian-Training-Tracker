@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.auth import verify_password, create_token
+from app.auth import verify_password, hash_password, create_token
 from app.deps import get_current_user
 from app.models import User
 
@@ -32,3 +32,17 @@ async def login(body: LoginIn):
 @router.get("/me")
 async def me(current_user: User = Depends(get_current_user)):
     return _user_out(current_user)
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.patch("/me/password", status_code=204)
+async def change_my_password(body: ChangePasswordIn, user: User = Depends(get_current_user)):
+    if not verify_password(body.current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    await user.update_from_dict({"hashed_password": hash_password(body.new_password)}).save()
