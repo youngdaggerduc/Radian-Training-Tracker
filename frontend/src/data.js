@@ -13,9 +13,10 @@ export const COURSES = [
 ];
 
 export const STAFF = [
-  { id: "s1", name: "Aaliyah Mohammed", initials: "AM" },
-  { id: "s2", name: "Devon Ramcharan", initials: "DR" },
-  { id: "s3", name: "Priya Singh", initials: "PS" },
+  { id: "s1", name: "Pierce Doman",        initials: "PD" },
+  { id: "s2", name: "Shanice Rattan",      initials: "SR" },
+  { id: "s3", name: "Kelsey Ramkhelawan",  initials: "KR" },
+  { id: "s4", name: "Ameer Mohammed",      initials: "AM" },
 ];
 
 export const INSTRUCTORS = [

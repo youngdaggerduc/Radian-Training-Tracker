@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Icon } from './icons';
 import { ScaffoldScene } from './scaffold3d';
 import * as API from '../api';
+import logo from '../assets/logo.png';
 
 export function LoginPage({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -33,7 +34,7 @@ export function LoginPage({ onLogin }) {
         <div className="login-3d-overlay"></div>
 
         <div className="login-brand">
-          <div className="logo-mark"></div>
+          <img src={logo} alt="Radian H.A." style={{width:44,height:44,objectFit:"contain"}}/>
           <div>
             <div className="login-brand-name">Radian H.A. Limited</div>
             <div className="login-brand-sub">Training Operations</div>

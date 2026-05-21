@@ -10,6 +10,7 @@ import { AdminView } from './components/admin';
 import { ExportsView } from './components/exports';
 import * as RD from './data';
 import * as API from './api';
+import logo from './assets/logo.png';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -254,7 +255,7 @@ function App() {
     <div className="app-root">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <div className="logo-mark"></div>
+          <img src={logo} alt="Radian H.A." style={{width:32,height:32,objectFit:"contain"}}/>
           <div>
             <div className="name">Radian H.A.</div>
             <div className="sub">Training Ops</div>

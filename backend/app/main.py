@@ -41,9 +41,10 @@ async def seed_users() -> None:
         return
 
     staff = [
-        {"id": "s1", "username": "aaliyah", "name": "Aaliyah Mohammed", "initials": "AM", "role": "Training Coordinator", "is_admin": True},
-        {"id": "s2", "username": "devon",   "name": "Devon Ramcharan",  "initials": "DR", "role": "Training Coordinator", "is_admin": False},
-        {"id": "s3", "username": "priya",   "name": "Priya Singh",      "initials": "PS", "role": "Training Coordinator", "is_admin": False},
+        {"id": "s1", "username": "pierce",  "name": "Pierce Doman",        "initials": "PD", "role": "Business Process Analyst", "is_admin": True},
+        {"id": "s2", "username": "shanice", "name": "Shanice Rattan",      "initials": "SR", "role": "Training Coordinator",      "is_admin": False},
+        {"id": "s3", "username": "kelsey",  "name": "Kelsey Ramkhelawan",  "initials": "KR", "role": "Training / Marketing",       "is_admin": False},
+        {"id": "s4", "username": "ameer",   "name": "Ameer Mohammed",      "initials": "AM", "role": "Training Assistant",         "is_admin": False},
     ]
     default_pw = hash_password("radian2026")
     for u in staff:
