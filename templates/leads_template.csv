@@ -1,0 +1,31 @@
+Name,Company,Phone,Email,Gender,Course ID,Source,Priority,Status,Inquiry Date,Assigned To,Notes
+John Smith,ABC Construction Ltd,868-555-0100,john@abc.com,Male,cisrs-l1,Referral,Medium,New Interest,2026-05-21,Pierce Doman,Interested in Level 1 scaffolding
+
+--- FIELD GUIDE ---
+Name          | REQUIRED | Full name of the lead
+Company       | optional | Company or employer name
+Phone         | optional | Contact phone number (format as text to preserve dashes)
+Email         | optional | Email address
+Gender        | optional | Male / Female / Other — leave blank if not specified
+Course ID     | REQUIRED | Must match a Course ID from the app — see below
+Source        | optional | Referral / Walk-in / Social Media / Website / Phone / Other
+Priority      | optional | High / Medium / Low  (default: Medium)
+Status        | optional | New Interest / Follow Up Needed / Converted / Not Interested  (default: New Interest)
+Inquiry Date  | REQUIRED | YYYY-MM-DD format  e.g. 2026-05-21
+Assigned To   | optional | Staff member name
+Notes         | optional | Free text — will appear as the first note on the lead
+
+--- VALID COURSE IDs ---
+cisrs-l1         | CISRS OSTS Scaffolder Level 1
+cisrs-l2a        | CISRS OSTS Scaffolder Level 2
+cisrs-l2b        | CISRS OSTS Scaffolder Level 2 (Advanced Cohort)
+cisrs-basic-insp | CISRS OSTS Basic Scaffolder Inspection
+cisrs-adv-insp   | CISRS OSTS Advanced Scaffolder Inspection
+cisrs-supv       | CISRS OSTS Scaffolder Supervisor
+gms-wah          | Getmie Safe Working at Height
+gms-basic-r      | Basic GetmieSafe Rescue Training
+gms-adv-r        | Advanced GetmieSafe Rescue Training
+gms-refresh      | GetmieSafe Rescue Refresher
+
+NOTE: When importing from the app, download the Excel template (.xlsx) — it includes a live
+Course Reference sheet with all currently active courses including any you have added.

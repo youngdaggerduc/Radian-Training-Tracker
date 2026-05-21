@@ -31,7 +31,7 @@ export function Modal({ title, sub, onClose, children, footer, wide }) {
 // ============ ADD LEAD ============
 export function AddLeadModal({ onClose, onSave }) {
   const [f, setF] = useState({
-    name: "", company: "", phone: "", email: "",
+    name: "", company: "", phone: "", email: "", gender: "",
     courseId: getAllCourses()[0]?.id || "", source: "Website", priority: "Medium",
     notes: "", assignedTo: STAFF[0].id, inquiryDate: todayISO(),
   });
@@ -42,7 +42,7 @@ export function AddLeadModal({ onClose, onSave }) {
     if (!valid) return;
     onSave({
       id: "L-" + Math.floor(1050 + Math.random() * 900),
-      name: f.name, company: f.company, phone: f.phone, email: f.email,
+      name: f.name, company: f.company, phone: f.phone, email: f.email, gender: f.gender,
       courseId: f.courseId, source: f.source, priority: f.priority,
       status: "New Interest", inquiryDate: f.inquiryDate, assignedTo: f.assignedTo,
       notes: f.notes ? [{ date: todayISO(), by: f.assignedTo, text: f.notes }] : [],
@@ -63,6 +63,16 @@ export function AddLeadModal({ onClose, onSave }) {
         <div className="field-row">
           <div className="field"><label>Phone *</label><input value={f.phone} onChange={e => set("phone", e.target.value)} placeholder="+1-868-..."/></div>
           <div className="field"><label>Email</label><input type="email" value={f.email} onChange={e => set("email", e.target.value)} placeholder="name@email.com"/></div>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Gender</label>
+            <select value={f.gender} onChange={e => set("gender", e.target.value)}>
+              <option value="">Not specified</option>
+              <option>Male</option><option>Female</option><option>Other</option>
+            </select>
+          </div>
+          <div className="field" style={{flex:2}}/>
         </div>
         <div className="field">
           <label>Course Interested In</label>
@@ -180,7 +190,7 @@ export function ConvertToPaymentModal({ lead, onClose, onConvert }) {
     }
     onConvert({
       id: "T-" + Math.floor(2020 + Math.random() * 100),
-      leadId: lead.id, name: lead.name, company: lead.company, phone: lead.phone, email: lead.email,
+      leadId: lead.id, name: lead.name, company: lead.company, phone: lead.phone, email: lead.email, gender: lead.gender || "",
       courseId: f.courseId,
       totalCost: Number(f.totalCost),
       registrationDate: todayISO(),
@@ -553,6 +563,131 @@ export function CertificateModal({ trainee, onClose, onIssue }) {
       <form onSubmit={submit}>
         <div className="field"><label>Training Completion Date</label><input type="date" value={f.completionDate} onChange={e => set("completionDate", e.target.value)}/></div>
         <div className="field"><label>Certificate Number</label><input value={f.number} onChange={e => set("number", e.target.value)}/></div>
+      </form>
+    </Modal>
+  );
+}
+
+// ============ EDIT LEAD ============
+export function EditLeadModal({ lead, onClose, onSave }) {
+  const [f, setF] = useState({
+    name: lead.name, company: lead.company || "", phone: lead.phone || "",
+    email: lead.email || "", gender: lead.gender || "",
+    courseId: lead.courseId, source: lead.source || "Website",
+    priority: lead.priority || "Medium", assignedTo: lead.assignedTo || STAFF[0].id,
+    inquiryDate: lead.inquiryDate,
+  });
+  const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+  const valid = f.name.trim() && f.phone.trim();
+  const submit = (e) => {
+    e.preventDefault();
+    if (!valid) return;
+    onSave({ ...lead, ...f });
+  };
+  return (
+    <Modal title="Edit Lead" sub={`${lead.id} · ${lead.name}`} onClose={onClose}
+      footer={<>
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-orange" onClick={submit} disabled={!valid}>Save Changes</button>
+      </>}>
+      <form onSubmit={submit}>
+        <div className="field-row">
+          <div className="field"><label>Full Name *</label><input value={f.name} onChange={e => set("name", e.target.value)}/></div>
+          <div className="field"><label>Company</label><input value={f.company} onChange={e => set("company", e.target.value)}/></div>
+        </div>
+        <div className="field-row">
+          <div className="field"><label>Phone *</label><input value={f.phone} onChange={e => set("phone", e.target.value)}/></div>
+          <div className="field"><label>Email</label><input type="email" value={f.email} onChange={e => set("email", e.target.value)}/></div>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Gender</label>
+            <select value={f.gender} onChange={e => set("gender", e.target.value)}>
+              <option value="">Not specified</option>
+              <option>Male</option><option>Female</option><option>Other</option>
+            </select>
+          </div>
+          <div className="field" style={{flex:2}}/>
+        </div>
+        <div className="field">
+          <label>Course Interested In</label>
+          <select value={f.courseId} onChange={e => set("courseId", e.target.value)}>
+            {getAllCourses().filter(c => c.active !== false).map(c => <option key={c.id} value={c.id}>{c.provider} · {c.name} — {fmtMoney(c.price)}</option>)}
+          </select>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Source of Inquiry</label>
+            <select value={f.source} onChange={e => set("source", e.target.value)}>
+              {["Website","Walk-in","WhatsApp","Phone","Referral"].map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Priority</label>
+            <select value={f.priority} onChange={e => set("priority", e.target.value)}>
+              {["High","Medium","Low"].map(s => <option key={s}>{s}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="field-row">
+          <div className="field"><label>Inquiry Date</label><input type="date" value={f.inquiryDate} onChange={e => set("inquiryDate", e.target.value)}/></div>
+          <div className="field">
+            <label>Assigned Staff</label>
+            <select value={f.assignedTo} onChange={e => set("assignedTo", e.target.value)}>
+              {STAFF.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// ============ EDIT TRAINEE (basic info only) ============
+export function EditTraineeModal({ trainee, onClose, onSave }) {
+  const [f, setF] = useState({
+    name: trainee.name, company: trainee.company || "",
+    phone: trainee.phone || "", email: trainee.email || "",
+    gender: trainee.gender || "", courseId: trainee.courseId,
+  });
+  const set = (k, v) => setF(s => ({ ...s, [k]: v }));
+  const valid = f.name.trim();
+  const submit = (e) => {
+    e.preventDefault();
+    if (!valid) return;
+    onSave({ ...trainee, ...f });
+  };
+  return (
+    <Modal title="Edit Trainee" sub={`${trainee.id} · ${trainee.name}`} onClose={onClose}
+      footer={<>
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-orange" onClick={submit} disabled={!valid}>Save Changes</button>
+      </>}>
+      <form onSubmit={submit}>
+        <div className="field-row">
+          <div className="field"><label>Full Name *</label><input value={f.name} onChange={e => set("name", e.target.value)}/></div>
+          <div className="field"><label>Company</label><input value={f.company} onChange={e => set("company", e.target.value)}/></div>
+        </div>
+        <div className="field-row">
+          <div className="field"><label>Phone</label><input value={f.phone} onChange={e => set("phone", e.target.value)}/></div>
+          <div className="field"><label>Email</label><input type="email" value={f.email} onChange={e => set("email", e.target.value)}/></div>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label>Gender</label>
+            <select value={f.gender} onChange={e => set("gender", e.target.value)}>
+              <option value="">Not specified</option>
+              <option>Male</option><option>Female</option><option>Other</option>
+            </select>
+          </div>
+          <div className="field" style={{flex:2}}/>
+        </div>
+        <div className="field">
+          <label>Course</label>
+          <select value={f.courseId} onChange={e => set("courseId", e.target.value)}>
+            {getAllCourses().filter(c => c.active !== false).map(c => <option key={c.id} value={c.id}>{c.provider} · {c.name} — {fmtMoney(c.price)}</option>)}
+          </select>
+        </div>
       </form>
     </Modal>
   );

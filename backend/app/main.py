@@ -6,14 +6,14 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from tortoise.contrib.fastapi import register_tortoise
 
-from app.config import TORTOISE_ORM
+from app.config import TORTOISE_ORM, ALLOWED_ORIGINS
 from app.routers import admin as admin_router, api, auth as auth_router
 
 app = FastAPI(title="Radian Training API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

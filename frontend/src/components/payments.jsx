@@ -280,12 +280,52 @@ export function CertificatesView({ state, openDrawer, openModal }) {
   );
 }
 
+// ── WhatsApp message templates ────────────────────────────────────────────────
+function buildWhatsAppTemplates(trainee, course) {
+  const remaining = trainee.totalCost - trainee.paid;
+  const nextPayment = trainee.plan?.find(p => !p.paid);
+  const templates = [
+    {
+      label: "Registration Confirmation",
+      text: `Hello ${trainee.name},\n\nWe are pleased to confirm your registration for *${course.name}* with Radian H.A. Training.\n\n📋 *Course Details*\nCourse: ${course.name}\nTotal Cost: ${RD.fmtMoney(trainee.totalCost)}\nDeposit Paid: ${RD.fmtMoney(trainee.paid)}${remaining > 0 ? `\nBalance Remaining: ${RD.fmtMoney(remaining)}` : ""}\n\nWe will be in touch with your scheduled training dates. Thank you for choosing Radian H.A. Training!`,
+    },
+    ...(nextPayment ? [{
+      label: "Payment Reminder",
+      text: `Hello ${trainee.name},\n\nThis is a friendly reminder that your payment of *${RD.fmtMoney(nextPayment.amount)}* for *${course.name}* ${RD.daysUntil(nextPayment.due) < 0 ? `was due on ${RD.fmtDate(nextPayment.due)}` : `is due on ${RD.fmtDate(nextPayment.due)}`}.\n\nPlease contact us at your earliest convenience to arrange payment.\n\nThank you,\nRadian H.A. Training`,
+    }] : []),
+    ...(trainee.certificate?.status === "Ready for Collection" ? [{
+      label: "Certificate Ready for Collection",
+      text: `Hello ${trainee.name},\n\nYour *${course.name}* certificate is ready for collection.\n\nPlease visit our office with a valid government-issued ID (Driver's Permit or National ID).\n\nCertificate No: ${trainee.certificate.number}\n\nThank you,\nRadian H.A. Training`,
+    }] : []),
+    {
+      label: "General Follow-up",
+      text: `Hello ${trainee.name},\n\nThis is Radian H.A. Training reaching out regarding your *${course.name}* enrollment. If you have any questions or concerns, please feel free to contact us.\n\nThank you for choosing Radian H.A. Training!`,
+    },
+  ];
+  return templates;
+}
+
 // ============ TRAINEE DETAIL DRAWER ============
-export function TraineeDrawer({ trainee, onClose, updateTrainee, openModal }) {
+export function TraineeDrawer({ trainee, onClose, updateTrainee, openModal, onDelete }) {
   const [tab, setTab] = useState("overview");
+  const [newNote, setNewNote] = useState("");
+  const [copied, setCopied] = useState(null);
   const course = RD.getCourse(trainee.courseId);
   const remaining = trainee.totalCost - trainee.paid;
   const pct = Math.min(100, (trainee.paid / trainee.totalCost) * 100);
+
+  const addNote = () => {
+    if (!newNote.trim()) return;
+    updateTrainee({ ...trainee, notes: [{ date: RD.todayISO(), text: newNote }, ...(trainee.notes || [])] });
+    setNewNote("");
+  };
+
+  const copyTemplate = (text, idx) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(idx);
+      setTimeout(() => setCopied(null), 1800);
+    });
+  };
 
   const handleRecord = (newInst) => {
     const newPlan = trainee.plan.map(p => p.id === newInst.id ? newInst : p);
@@ -305,7 +345,12 @@ export function TraineeDrawer({ trainee, onClose, updateTrainee, openModal }) {
               <div style={{fontSize:11, letterSpacing:"0.18em", textTransform:"uppercase", color:"var(--orange)", marginBottom:6}}>TRAINEE · {trainee.id}</div>
               <h2>{trainee.name}</h2>
             </div>
-            <button className="modal-close" onClick={onClose}><Icon name="close" size={18}/></button>
+            <div style={{display:"flex", gap:6}}>
+              <button className="btn btn-ghost" style={{padding:"6px 10px", fontSize:12}} onClick={() => openModal("editTrainee", trainee)}>
+                <Icon name="edit" size={13}/> Edit
+              </button>
+              <button className="modal-close" onClick={onClose}><Icon name="close" size={18}/></button>
+            </div>
           </div>
           <div className="meta" style={{marginTop:12, flexWrap:"wrap"}}>
             <span>{trainee.company || "Individual"}</span><span>·</span>
@@ -314,7 +359,7 @@ export function TraineeDrawer({ trainee, onClose, updateTrainee, openModal }) {
           </div>
         </div>
         <div className="drawer-tabs">
-          {["overview", "payments", "enrollment", "certificate"].map(t => (
+          {["overview", "notes", "payments", "enrollment", "certificate"].map(t => (
             <button key={t} className={"drawer-tab" + (tab === t ? " active" : "")} onClick={() => setTab(t)}>{t}</button>
           ))}
         </div>
@@ -336,8 +381,54 @@ export function TraineeDrawer({ trainee, onClose, updateTrainee, openModal }) {
 
               <h3 style={{fontSize:14, marginTop:24, marginBottom:12, color:"var(--navy-500)"}}>Contact</h3>
               <div className="kv"><span className="k">Email</span><span className="v">{trainee.email || "—"}</span></div>
+              <div className="kv"><span className="k">Gender</span><span className="v">{trainee.gender || "—"}</span></div>
               <div className="kv"><span className="k">Registration</span><span className="v">{RD.fmtDate(trainee.registrationDate)}</span></div>
               <div className="kv"><span className="k">Payment Method</span><span className="v">{trainee.paymentMethod}</span></div>
+
+              <h3 style={{fontSize:14, marginTop:24, marginBottom:12, color:"var(--navy-500)"}}>WhatsApp Templates</h3>
+              <div style={{display:"flex", flexDirection:"column", gap:10}}>
+                {buildWhatsAppTemplates(trainee, course).map((tpl, i) => (
+                  <div key={i} style={{border:"1px solid var(--navy-100)", borderRadius:"var(--radius)", padding:14}}>
+                    <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8}}>
+                      <div style={{fontSize:11, letterSpacing:"0.14em", textTransform:"uppercase", color:"var(--navy-500)", fontWeight:600}}>{tpl.label}</div>
+                      <button className="btn btn-ghost" style={{padding:"4px 8px", fontSize:11}} onClick={() => copyTemplate(tpl.text, i)}>
+                        <Icon name="copy" size={11}/> {copied === i ? "Copied!" : "Copy"}
+                      </button>
+                    </div>
+                    <div style={{fontSize:12, color:"var(--navy-500)", whiteSpace:"pre-wrap", lineHeight:1.65}}>{tpl.text}</div>
+                  </div>
+                ))}
+              </div>
+
+              <h3 style={{fontSize:14, marginBottom:12, marginTop:28, color:"var(--navy-500)"}}>Danger Zone</h3>
+              <p style={{color:"var(--navy-500)", fontSize:13, marginBottom:12}}>Permanently delete this trainee record. This cannot be undone.</p>
+              <button className="btn" style={{background:"var(--red)", color:"#fff"}}
+                onClick={() => { if (window.confirm(`Delete trainee "${trainee.name}"? This cannot be undone.`)) onDelete(trainee.id); }}>
+                <Icon name="trash" size={14}/> Delete Trainee
+              </button>
+            </>
+          )}
+
+          {tab === "notes" && (
+            <>
+              <div style={{marginBottom:18}}>
+                <textarea value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note about this trainee…"
+                  style={{width:"100%", padding:12, border:"1px solid var(--navy-100)", borderRadius:"var(--radius)", minHeight:70, resize:"vertical"}}/>
+                <button className="btn btn-orange" style={{marginTop:8}} onClick={addNote} disabled={!newNote.trim()}>Add Note</button>
+              </div>
+              <h3 style={{fontSize:14, marginBottom:12, color:"var(--navy-500)"}}>History ({(trainee.notes || []).length})</h3>
+              {!(trainee.notes || []).length ? (
+                <div className="empty"><div className="ttl" style={{fontSize:14}}>No notes yet</div></div>
+              ) : (
+                <div className="timeline">
+                  {(trainee.notes || []).map((n, i) => (
+                    <div key={i} className="tl-item">
+                      <div className="when">{RD.fmtDate(n.date)}</div>
+                      <div className="what">{n.text}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
 

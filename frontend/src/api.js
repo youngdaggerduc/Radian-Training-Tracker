@@ -1,4 +1,4 @@
-const BASE = "/api";
+const BASE = (import.meta.env.VITE_API_BASE || "") + "/api";
 const TOKEN_KEY = "radian_token";
 
 let _token = null;
@@ -65,3 +65,4 @@ export const updateLead    = (lead)      => request("PATCH",  `/leads/${lead.id}
 export const deleteLead    = (id)        => request("DELETE", `/leads/${id}`);
 export const createTrainee = (trainee)   => request("POST",   "/trainees",               trainee);
 export const updateTrainee = (trainee)   => request("PATCH",  `/trainees/${trainee.id}`, trainee);
+export const deleteTrainee = (id)        => request("DELETE", `/trainees/${id}`);

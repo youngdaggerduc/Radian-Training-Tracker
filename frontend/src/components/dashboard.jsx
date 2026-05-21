@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react';
 import { Icon } from './icons';
 import {
   fmtDate as fD, fmtDateShort as fDS, fmtMoney as fM,
@@ -8,6 +9,14 @@ import {
 
 export function Dashboard({ state, setView, openModal, openDrawer, currentUser }) {
   const { leads, trainees } = state;
+  const [notifOpen, setNotifOpen] = useState(false);
+  const bellRef = useRef(null);
+
+  useEffect(() => {
+    const h = (e) => { if (bellRef.current && !bellRef.current.contains(e.target)) setNotifOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
 
   const newLeads = leads.filter(l => l.status === "New Interest").length;
   const today = tISO();
@@ -105,7 +114,68 @@ export function Dashboard({ state, setView, openModal, openDrawer, currentUser }
           <div className="crumb">DASHBOARD · {new Date().toLocaleDateString("en-GB", {weekday:"long", day:"numeric", month:"long", year:"numeric"})}</div>
         </div>
         <div className="right">
-          <button className="bell"><Icon name="bell" size={16}/><span className="badge"></span></button>
+          <div style={{ position: "relative" }} ref={bellRef}>
+            <button className="bell" onClick={() => setNotifOpen(o => !o)}>
+              <Icon name="bell" size={16}/>
+              {importantReminders.length > 0 && <span className="badge"/>}
+            </button>
+
+            {notifOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0,
+                width: 360, background: "var(--paper)",
+                border: "1px solid var(--navy-100)", borderRadius: "var(--radius-lg)",
+                boxShadow: "var(--shadow)", zIndex: 200, overflow: "hidden",
+              }}>
+                <div style={{
+                  padding: "14px 18px", borderBottom: "1px solid var(--navy-50)",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--navy-800)" }}>Alerts & Reminders</div>
+                    <div style={{ fontSize: 12, color: "var(--navy-500)", marginTop: 2 }}>
+                      {importantReminders.length === 0 ? "All clear" : `${importantReminders.length} item${importantReminders.length === 1 ? "" : "s"} need attention`}
+                    </div>
+                  </div>
+                  {importantReminders.length > 0 && (
+                    <span style={{
+                      background: "var(--orange)", color: "#fff",
+                      fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
+                    }}>{importantReminders.length}</span>
+                  )}
+                </div>
+
+                <div style={{ maxHeight: 380, overflowY: "auto" }}>
+                  {importantReminders.length === 0 ? (
+                    <div style={{ padding: "28px 18px", textAlign: "center", color: "var(--navy-400)", fontSize: 13 }}>
+                      <div style={{ fontSize: 22, marginBottom: 8 }}>✓</div>
+                      No urgent reminders right now.
+                    </div>
+                  ) : importantReminders.map((r, i) => (
+                    <div key={i} className={"reminder " + r.kind} style={{ borderRadius: 0 }}
+                      onClick={() => { r.action(); setNotifOpen(false); }}>
+                      <div className="icon-box"><Icon name={r.icon} size={15}/></div>
+                      <div className="body">
+                        <div className="ttl" style={{ fontSize: 13 }}>{r.title}</div>
+                        <div className="sub" style={{ fontSize: 11 }}>{r.sub}</div>
+                      </div>
+                      <div className="when" style={{ fontSize: 11, whiteSpace: "nowrap" }}>{r.when}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{
+                  padding: "10px 18px", borderTop: "1px solid var(--navy-50)",
+                  display: "flex", justifyContent: "flex-end",
+                }}>
+                  <button className="btn-text" style={{ fontSize: 12 }} onClick={() => { setNotifOpen(false); setView("followups"); }}>
+                    View all follow-ups <Icon name="arrowR" size={11}/>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <button className="btn btn-orange" onClick={() => openModal("addLead")}>
             <Icon name="plus" size={14}/> New Lead
           </button>

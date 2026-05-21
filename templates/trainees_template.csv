@@ -1,0 +1,32 @@
+Name,Company,Phone,Email,Gender,Course ID,Total Cost (TTD),Registration Date,Payment Method,Amount Paid (TTD),Payment Notes,Stage
+Jane Doe,XYZ Construction,868-555-0200,jane@xyz.com,Female,cisrs-l1,8437.50,2026-05-21,invoice,2000,First instalment collected on registration,initial-payment
+
+--- FIELD GUIDE ---
+Name                | REQUIRED | Full name of the trainee
+Company             | optional | Company or employer name
+Phone               | optional | Contact phone number (format as text to preserve dashes)
+Email               | optional | Email address
+Gender              | optional | Male / Female / Other — leave blank if not specified
+Course ID           | REQUIRED | Must match a Course ID from the app — see below
+Total Cost (TTD)    | REQUIRED | Full course cost in TTD — must be greater than 0
+Registration Date   | REQUIRED | YYYY-MM-DD format  e.g. 2026-05-21
+Payment Method      | optional | cash / invoice / bank transfer
+Amount Paid (TTD)   | optional | Amount already collected — 0 if nothing paid yet
+Payment Notes       | optional | Free text
+Stage               | optional | initial-payment / in-progress / cert-pending / completed  (default: initial-payment)
+
+--- VALID COURSE IDs ---
+cisrs-l1         | CISRS OSTS Scaffolder Level 1              | $8,437.50 TTD | 5 days
+cisrs-l2a        | CISRS OSTS Scaffolder Level 2              | $8,437.50 TTD | 5 days
+cisrs-l2b        | CISRS OSTS Scaffolder Level 2 (Advanced)   | $9,000.00 TTD | 5 days
+cisrs-basic-insp | CISRS OSTS Basic Scaffolder Inspection     | $6,750.00 TTD | 3 days
+cisrs-adv-insp   | CISRS OSTS Advanced Scaffolder Inspection  | $6,500.00 TTD | 2 days
+cisrs-supv       | CISRS OSTS Scaffolder Supervisor           | $7,875.00 TTD | 3 days
+gms-wah          | Getmie Safe Working at Height              |   $675.00 TTD | 1 day
+gms-basic-r      | Basic GetmieSafe Rescue Training           | $1,687.50 TTD | 1 day
+gms-adv-r        | Advanced GetmieSafe Rescue Training        | $3,375.00 TTD | 2 days
+gms-refresh      | GetmieSafe Rescue Refresher                | $1,687.50 TTD | 1 day
+
+NOTE: When importing from the app, download the Excel template (.xlsx) — it includes a live
+Course Reference sheet with all currently active courses including any you have added.
+Payment plans cannot be imported via this sheet — they can be set up in the app after import.

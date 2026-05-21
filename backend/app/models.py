@@ -38,6 +38,7 @@ class Lead(models.Model):
     status = fields.CharField(max_length=50, default="New Interest")
     inquiry_date = fields.CharField(max_length=10)
     assigned_to = fields.CharField(max_length=10, default="")
+    gender = fields.CharField(max_length=20, default="")
     notes = fields.JSONField(default=list)
     follow_ups = fields.JSONField(default=list)
 
@@ -52,6 +53,7 @@ class Trainee(models.Model):
     company = fields.CharField(max_length=200, default="")
     phone = fields.CharField(max_length=50, default="")
     email = fields.CharField(max_length=200, default="")
+    gender = fields.CharField(max_length=20, default="")
     course_id = fields.CharField(max_length=50)
     total_cost = fields.FloatField()
     registration_date = fields.CharField(max_length=10)
@@ -59,6 +61,7 @@ class Trainee(models.Model):
     paid = fields.FloatField(default=0)
     plan = fields.JSONField(default=list)
     payment_notes = fields.CharField(max_length=1000, default="")
+    notes = fields.JSONField(default=list)
     enrollment = fields.JSONField(null=True, default=None)
     certificate = fields.JSONField(null=True, default=None)
     stage = fields.CharField(max_length=50, default="initial-payment")

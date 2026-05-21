@@ -158,7 +158,7 @@ export function FollowUpsView({ state, openDrawer, openModal, updateLead }) {
 }
 
 // ============ LEAD DETAIL DRAWER ============
-export function LeadDrawer({ lead, onClose, updateLead, convertToTrainee, openModal }) {
+export function LeadDrawer({ lead, onClose, updateLead, convertToTrainee, openModal, onDelete }) {
   const [tab, setTab] = useState("overview");
   const [newNote, setNewNote] = useState("");
   const course = RD.getCourse(lead.courseId);
@@ -187,7 +187,12 @@ export function LeadDrawer({ lead, onClose, updateLead, convertToTrainee, openMo
               <div style={{fontSize:11, letterSpacing:"0.18em", textTransform:"uppercase", color:"var(--orange)", marginBottom: 6}}>LEAD · {lead.id}</div>
               <h2>{lead.name}</h2>
             </div>
-            <button className="modal-close" onClick={onClose}><Icon name="close" size={18}/></button>
+            <div style={{display:"flex", gap:6}}>
+              <button className="btn btn-ghost" style={{padding:"6px 10px", fontSize:12}} onClick={() => openModal("editLead", lead)}>
+                <Icon name="edit" size={13}/> Edit
+              </button>
+              <button className="modal-close" onClick={onClose}><Icon name="close" size={18}/></button>
+            </div>
           </div>
           <div className="meta" style={{marginTop:12}}>
             <StatusPill status={lead.status}/>
@@ -220,6 +225,7 @@ export function LeadDrawer({ lead, onClose, updateLead, convertToTrainee, openMo
               <h3 style={{fontSize:16, marginBottom:12, color:"var(--navy-500)"}}>Contact Information</h3>
               <div className="kv"><span className="k">Email</span><span className="v">{lead.email || "—"}</span></div>
               <div className="kv"><span className="k">Phone</span><span className="v">{lead.phone}</span></div>
+              <div className="kv"><span className="k">Gender</span><span className="v">{lead.gender || "—"}</span></div>
               <div className="kv"><span className="k">Source of Inquiry</span><span className="v">{lead.source}</span></div>
               <div className="kv"><span className="k">Inquiry Date</span><span className="v">{RD.fmtDate(lead.inquiryDate)}</span></div>
               <div className="kv"><span className="k">Assigned Staff</span><span className="v">{assigned.name}</span></div>
@@ -286,6 +292,13 @@ export function LeadDrawer({ lead, onClose, updateLead, convertToTrainee, openMo
               <p style={{color:"var(--navy-500)", fontSize:13, marginBottom: 12}}>Once the prospect has confirmed interest and is ready to pay, convert them into the payment workflow.</p>
               <button className="btn btn-orange" onClick={() => convertToTrainee(lead)} disabled={lead.status === "Not Interested"}>
                 <Icon name="arrowR" size={14}/> Record Initial Payment & Convert
+              </button>
+
+              <h3 style={{fontSize:14, marginBottom:12, marginTop:28, color:"var(--navy-500)"}}>Danger Zone</h3>
+              <p style={{color:"var(--navy-500)", fontSize:13, marginBottom:12}}>Permanently delete this lead record. This cannot be undone.</p>
+              <button className="btn" style={{background:"var(--red)", color:"#fff"}}
+                onClick={() => { if (window.confirm(`Delete lead "${lead.name}"? This cannot be undone.`)) onDelete(lead.id); }}>
+                <Icon name="trash" size={14}/> Delete Lead
               </button>
             </>
           )}

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 from jose import JWTError, jwt
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-use-a-long-random-string-at-least-32-chars")
+SECRET_KEY = os.getenv("SECRET_KEY") or "change-me-in-production-use-a-long-random-string-at-least-32-chars"
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_HOURS = 10  # covers a full working day
 

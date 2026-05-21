@@ -18,6 +18,7 @@ def lead_out(l: Lead) -> dict:
         "company": l.company,
         "phone": l.phone,
         "email": l.email,
+        "gender": l.gender,
         "courseId": l.course_id,
         "source": l.source,
         "priority": l.priority,
@@ -37,6 +38,7 @@ def trainee_out(t: Trainee) -> dict:
         "company": t.company,
         "phone": t.phone,
         "email": t.email,
+        "gender": t.gender,
         "courseId": t.course_id,
         "totalCost": t.total_cost,
         "registrationDate": t.registration_date,
@@ -44,6 +46,7 @@ def trainee_out(t: Trainee) -> dict:
         "paid": t.paid,
         "plan": t.plan,
         "paymentNotes": t.payment_notes,
+        "notes": t.notes,
         "enrollment": t.enrollment,
         "certificate": t.certificate,
         "stage": t.stage,
@@ -71,6 +74,7 @@ class LeadIn(BaseModel):
     company: str = ""
     phone: str = ""
     email: str = ""
+    gender: str = ""
     courseId: str
     source: str = ""
     priority: str = "Medium"
@@ -86,6 +90,7 @@ class LeadPatch(BaseModel):
     company: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    gender: Optional[str] = None
     courseId: Optional[str] = None
     source: Optional[str] = None
     priority: Optional[str] = None
@@ -102,6 +107,7 @@ class TraineeIn(BaseModel):
     company: str = ""
     phone: str = ""
     email: str = ""
+    gender: str = ""
     courseId: str
     totalCost: float
     registrationDate: str
@@ -109,6 +115,7 @@ class TraineeIn(BaseModel):
     paid: float = 0
     plan: list = []
     paymentNotes: str = ""
+    notes: list = []
     enrollment: Optional[dict] = None
     certificate: Optional[dict] = None
     stage: str = "initial-payment"
@@ -119,6 +126,7 @@ class TraineePatch(BaseModel):
     company: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    gender: Optional[str] = None
     courseId: Optional[str] = None
     totalCost: Optional[float] = None
     registrationDate: Optional[str] = None
@@ -126,6 +134,7 @@ class TraineePatch(BaseModel):
     paid: Optional[float] = None
     plan: Optional[list] = None
     paymentNotes: Optional[str] = None
+    notes: Optional[list] = None
     enrollment: Optional[Any] = None
     certificate: Optional[Any] = None
     stage: Optional[str] = None
@@ -165,6 +174,7 @@ async def create_lead(body: LeadIn):
         company=body.company,
         phone=body.phone,
         email=body.email,
+        gender=body.gender,
         course_id=body.courseId,
         source=body.source,
         priority=body.priority,
@@ -188,6 +198,7 @@ async def update_lead(lead_id: str, body: LeadPatch):
     if body.company is not None:    updates["company"] = body.company
     if body.phone is not None:      updates["phone"] = body.phone
     if body.email is not None:      updates["email"] = body.email
+    if body.gender is not None:     updates["gender"] = body.gender
     if body.courseId is not None:   updates["course_id"] = body.courseId
     if body.source is not None:     updates["source"] = body.source
     if body.priority is not None:   updates["priority"] = body.priority
@@ -221,6 +232,7 @@ async def create_trainee(body: TraineeIn):
         company=body.company,
         phone=body.phone,
         email=body.email,
+        gender=body.gender,
         course_id=body.courseId,
         total_cost=body.totalCost,
         registration_date=body.registrationDate,
@@ -228,6 +240,7 @@ async def create_trainee(body: TraineeIn):
         paid=body.paid,
         plan=body.plan,
         payment_notes=body.paymentNotes,
+        notes=body.notes,
         enrollment=body.enrollment,
         certificate=body.certificate,
         stage=body.stage,
@@ -246,6 +259,7 @@ async def update_trainee(trainee_id: str, body: TraineePatch):
     if body.company is not None:          updates["company"] = body.company
     if body.phone is not None:            updates["phone"] = body.phone
     if body.email is not None:            updates["email"] = body.email
+    if body.gender is not None:           updates["gender"] = body.gender
     if body.courseId is not None:         updates["course_id"] = body.courseId
     if body.totalCost is not None:        updates["total_cost"] = body.totalCost
     if body.registrationDate is not None: updates["registration_date"] = body.registrationDate
@@ -253,11 +267,22 @@ async def update_trainee(trainee_id: str, body: TraineePatch):
     if body.paid is not None:             updates["paid"] = body.paid
     if body.plan is not None:             updates["plan"] = body.plan
     if body.paymentNotes is not None:     updates["payment_notes"] = body.paymentNotes
+    if body.notes is not None:            updates["notes"] = body.notes
     if body.enrollment is not None:       updates["enrollment"] = body.enrollment
     if body.certificate is not None:      updates["certificate"] = body.certificate
     if body.stage is not None:            updates["stage"] = body.stage
 
     if updates:
         await trainee.update_from_dict(updates).save()
+
+    return trainee_out(trainee)
+
+
+@router.delete("/trainees/{trainee_id}", status_code=204)
+async def delete_trainee(trainee_id: str):
+    trainee = await Trainee.get_or_none(id=trainee_id)
+    if not trainee:
+        raise HTTPException(status_code=404, detail="Trainee not found")
+    await trainee.delete()
 
     return trainee_out(trainee)

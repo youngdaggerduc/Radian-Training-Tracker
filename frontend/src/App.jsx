@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Icon } from './components/icons';
 import { LoginPage } from './components/login';
-import { Modal, AddLeadModal, FollowUpModal, ConvertToPaymentModal, RecordPaymentModal, EditPlanModal, EnrollModal, CertificateModal, CollectCertModal } from './components/modals';
+import { Modal, AddLeadModal, FollowUpModal, ConvertToPaymentModal, RecordPaymentModal, EditPlanModal, EnrollModal, CertificateModal, CollectCertModal, EditLeadModal, EditTraineeModal } from './components/modals';
 import { Dashboard, StatusPill } from './components/dashboard';
 import { LeadsView, FollowUpsView, LeadDrawer } from './components/leads';
 import { PaymentsView, EnrollmentView, CertificatesView, TraineeDrawer } from './components/payments';
 import { PipelineView } from './components/pipeline';
 import { AdminView } from './components/admin';
 import { ExportsView } from './components/exports';
+import { ImportView } from './components/import';
+import { CompaniesView } from './components/companies';
 import { SearchModal } from './components/search';
 import * as RD from './data';
 import * as API from './api';
@@ -84,6 +86,14 @@ function App() {
     setState(s => ({ ...s, courses }));
   }, []);
 
+  const refreshState = useCallback(async () => {
+    try {
+      const data = await API.fetchState();
+      RD.setCourses(data.courses);
+      setState(data);
+    } catch { /* ignore */ }
+  }, []);
+
   if (appLoading) {
     return (
       <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"var(--navy-900)",color:"var(--ivory)",fontFamily:"var(--sans)",fontSize:14,opacity:0.7}}>
@@ -138,6 +148,28 @@ function App() {
     }
   };
 
+  const deleteLead = async (id) => {
+    try {
+      await API.deleteLead(id);
+      setState(s => ({ ...s, leads: s.leads.filter(l => l.id !== id) }));
+      setDrawer(null);
+      showToast("Lead deleted");
+    } catch {
+      showError("Could not delete lead — please try again");
+    }
+  };
+
+  const deleteTrainee = async (id) => {
+    try {
+      await API.deleteTrainee(id);
+      setState(s => ({ ...s, trainees: s.trainees.filter(t => t.id !== id) }));
+      setDrawer(null);
+      showToast("Trainee record deleted");
+    } catch {
+      showError("Could not delete trainee — please try again");
+    }
+  };
+
   const updateTrainee = async (trainee) => {
     try {
       const updated = await API.updateTrainee(trainee);
@@ -157,6 +189,8 @@ function App() {
     else if (type === "collectCert") setModal({ type: "collectCert", trainee: args[0] });
     else if (type === "recordPayment") setModal({ type: "recordPayment", trainee: args[0], installment: args[1], onRecord: args[2] });
     else if (type === "editPlan") setModal({ type: "editPlan", trainee: args[0] });
+    else if (type === "editLead") setModal({ type: "editLead", lead: args[0] });
+    else if (type === "editTrainee") setModal({ type: "editTrainee", trainee: args[0] });
   };
   const openDrawer = (d) => setDrawer(d);
 
@@ -168,15 +202,20 @@ function App() {
   const certReady      = state.trainees.filter(t => t.certificate?.status === "Ready for Collection").length;
 
   const navItems = [
-    { id: "dashboard",   label: "Dashboard",       icon: "dashboard" },
-    { id: "leads",       label: "Training Leads",  icon: "leads",    badge: newLeadCount || null },
-    { id: "followups",   label: "Follow-ups",      icon: "followups", badge: (todayFUCount + overdueFUCount) || null },
-    { id: "payments",    label: "Payments",        icon: "payments",  badge: overduePay || null },
-    { id: "enrollment",  label: "Enrollment",      icon: "enroll" },
-    { id: "certificates",label: "Certificates",    icon: "cert",      badge: certReady || null },
-    { id: "pipeline",    label: "Full Pipeline",   icon: "pipeline" },
-    { id: "exports",     label: "Exports",         icon: "download" },
-    ...(user.isAdmin ? [{ id: "admin", label: "Staff Accounts", icon: "user" }] : []),
+    { id: "dashboard",    label: "Dashboard",       icon: "dashboard" },
+    { id: "leads",        label: "Training Leads",  icon: "leads",    badge: newLeadCount || null },
+    { id: "followups",    label: "Follow-ups",      icon: "followups", badge: (todayFUCount + overdueFUCount) || null },
+    { id: "payments",     label: "Payments",        icon: "payments",  badge: overduePay || null },
+    { id: "enrollment",   label: "Enrollment",      icon: "enroll" },
+    { id: "certificates", label: "Certificates",    icon: "cert",      badge: certReady || null },
+    { id: "pipeline",     label: "Full Pipeline",   icon: "pipeline" },
+    { id: "companies",    label: "Companies",       icon: "company" },
+    { id: "exports",      label: "Exports",         icon: "download" },
+  ];
+
+  const adminNavItems = [
+    { id: "admin",  label: "Staff Accounts", icon: "user" },
+    { id: "import", label: "Import Data",    icon: "import" },
   ];
 
   // ============ VIEW ROUTING ============
@@ -189,8 +228,10 @@ function App() {
       case "enrollment":   return <EnrollmentView state={state} openDrawer={openDrawer} openModal={openModal}/>;
       case "certificates": return <CertificatesView state={state} openDrawer={openDrawer} openModal={openModal}/>;
       case "pipeline":     return <PipelineView state={state} openDrawer={openDrawer}/>;
+      case "companies":    return <CompaniesView state={state} openDrawer={openDrawer}/>;
       case "exports":      return <ExportsView state={state}/>;
       case "admin":        return <AdminView currentUser={user} courses={state.courses} onCoursesChange={updateCourses}/>;
+      case "import":       return <ImportView onImported={refreshState}/>;
       default:             return null;
     }
   };
@@ -206,6 +247,7 @@ function App() {
         updateLead={updateLead}
         convertToTrainee={convertToTrainee}
         openModal={openModal}
+        onDelete={deleteLead}
       />;
     }
     if (drawer.type === "trainee") {
@@ -215,6 +257,7 @@ function App() {
         trainee={trainee} onClose={() => setDrawer(null)}
         updateTrainee={updateTrainee}
         openModal={openModal}
+        onDelete={deleteTrainee}
       />;
     }
     return null;
@@ -265,6 +308,18 @@ function App() {
           showToast(`Certificate collected by ${cert.collectedBy}`);
           close();
         }}/>;
+      case "editLead":
+        return <EditLeadModal lead={modal.lead} onClose={close} onSave={(updated) => {
+          updateLead(updated);
+          showToast(`${updated.name} updated`);
+          close();
+        }}/>;
+      case "editTrainee":
+        return <EditTraineeModal trainee={modal.trainee} onClose={close} onSave={(updated) => {
+          updateTrainee(updated);
+          showToast(`${updated.name} updated`);
+          close();
+        }}/>;
       default: return null;
     }
   };
@@ -280,41 +335,55 @@ function App() {
           </div>
         </div>
 
-        {/* Global search — hidden on icon-only sidebar via CSS */}
-        <div className="sidebar-search-btn" style={{ padding: "12px 16px 0" }}>
-          <button
-            onClick={() => setSearchOpen(true)}
-            style={{
-              width: "100%", display: "flex", alignItems: "center", gap: 10,
-              padding: "8px 12px", borderRadius: "var(--radius)",
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
-              color: "rgba(255,255,255,0.5)", fontSize: 12, cursor: "pointer", textAlign: "left",
-            }}
-          >
-            <Icon name="search" size={13}/>
-            <span style={{ flex: 1 }}>Search…</span>
-            <kbd style={{ fontSize: 9, opacity: 0.5, fontFamily: "var(--mono)", letterSpacing: "0.05em" }}>Ctrl K</kbd>
-          </button>
-        </div>
-
-        <div className="nav-section">
-          <div className="nav-section-label">Workspace</div>
-          {navItems.map(item => (
-            <div key={item.id} className={"nav-item" + (view === item.id ? " active" : "")} onClick={() => setView(item.id)} title={item.label}>
-              <Icon name={item.icon} className="nav-icon" size={16}/>
-              <span>{item.label}</span>
-              {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
-            </div>
-          ))}
-        </div>
-
-        <div className="nav-section">
-          <div className="nav-section-label">Catalog</div>
-          <div className="nav-item" style={{cursor:"default", opacity: 0.85}}>
-            <Icon name="book" className="nav-icon" size={16}/>
-            <span>Courses</span>
-            <span className="nav-badge" style={{background:"rgba(255,255,255,0.12)"}}>{RD.getAllCourses().filter(c => c.active !== false).length}</span>
+        <div className="nav-scroll">
+          {/* Global search — hidden on icon-only sidebar via CSS */}
+          <div className="sidebar-search-btn" style={{ padding: "12px 16px 0" }}>
+            <button
+              onClick={() => setSearchOpen(true)}
+              style={{
+                width: "100%", display: "flex", alignItems: "center", gap: 10,
+                padding: "8px 12px", borderRadius: "var(--radius)",
+                background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
+                color: "rgba(255,255,255,0.5)", fontSize: 12, cursor: "pointer", textAlign: "left",
+              }}
+            >
+              <Icon name="search" size={13}/>
+              <span style={{ flex: 1 }}>Search…</span>
+              <kbd style={{ fontSize: 9, opacity: 0.5, fontFamily: "var(--mono)", letterSpacing: "0.05em" }}>Ctrl K</kbd>
+            </button>
           </div>
+
+          <div className="nav-section">
+            <div className="nav-section-label">Workspace</div>
+            {navItems.map(item => (
+              <div key={item.id} className={"nav-item" + (view === item.id ? " active" : "")} onClick={() => setView(item.id)} title={item.label}>
+                <Icon name={item.icon} className="nav-icon" size={16}/>
+                <span>{item.label}</span>
+                {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
+              </div>
+            ))}
+          </div>
+
+          <div className="nav-section">
+            <div className="nav-section-label">Catalog</div>
+            <div className="nav-item" style={{cursor:"default", opacity: 0.85}}>
+              <Icon name="book" className="nav-icon" size={16}/>
+              <span>Courses</span>
+              <span className="nav-badge" style={{background:"rgba(255,255,255,0.12)"}}>{RD.getAllCourses().filter(c => c.active !== false).length}</span>
+            </div>
+          </div>
+
+          {user.isAdmin && (
+            <div className="nav-section">
+              <div className="nav-section-label">Management</div>
+              {adminNavItems.map(item => (
+                <div key={item.id} className={"nav-item" + (view === item.id ? " active" : "")} onClick={() => setView(item.id)} title={item.label}>
+                  <Icon name={item.icon} className="nav-icon" size={16}/>
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="sidebar-footer">
@@ -323,15 +392,14 @@ function App() {
             <div className="nm">{user.name}</div>
             <div className="rl">{user.role}</div>
           </div>
-          <button className="modal-close" style={{color:"rgba(255,255,255,0.5)", marginBottom: 2}} onClick={() => setSearchOpen(true)} title="Search (Ctrl+K)">
-            <Icon name="search" size={14}/>
-          </button>
-          <button className="modal-close" style={{color:"rgba(255,255,255,0.5)"}} onClick={() => setChangePwOpen(true)} title="Change password">
-            <Icon name="settings" size={15}/>
-          </button>
-          <button className="modal-close" style={{color:"rgba(255,255,255,0.5)"}} onClick={handleLogout} title="Sign out">
-            <Icon name="logout" size={16}/>
-          </button>
+          <div className="sidebar-footer-actions">
+            <button className="footer-icon-btn" onClick={() => setChangePwOpen(true)} title="Change password">
+              <Icon name="settings" size={15}/>
+            </button>
+            <button className="footer-icon-btn" onClick={handleLogout} title="Sign out">
+              <Icon name="logout" size={16}/>
+            </button>
+          </div>
         </div>
       </aside>
 
