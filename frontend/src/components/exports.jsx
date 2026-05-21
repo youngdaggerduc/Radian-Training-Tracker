@@ -47,91 +47,156 @@ async function toPDF(title, headers, bodyRows, filename) {
   doc.save(filename);
 }
 
-// Portrait payment statement for a single trainee
+// Portrait payment statement for a single trainee — branded Radian design
 async function toStatementPDF(trainee) {
   const { jsPDF } = await import('jspdf');
   const { default: autoTable } = await import('jspdf-autotable');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const course = RD.getCourse(trainee.courseId);
+
+  const W      = 210;
+  const M      = 14;
+  const course  = RD.getCourse(trainee.courseId);
   const balance = +(trainee.totalCost - trainee.paid).toFixed(2);
-  const today = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  const slug = trainee.name.replace(/\s+/g, '_');
+  const today   = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  const slug    = trainee.name.replace(/\s+/g, '_');
 
-  // Navy header bar
-  doc.setFillColor(18, 30, 60);
-  doc.rect(0, 0, 210, 22, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('Radian H.A. Limited', 14, 11);
+  // Colour palette matching the app theme
+  const navy   = [6, 20, 41];
+  const muted  = [90, 120, 165];
+  const orange = [232, 116, 44];
+  const ivory  = [250, 248, 243];
+  const warm   = [242, 238, 230];
+  const green  = [46, 125, 91];
+  const red    = [184, 61, 61];
+  const amber  = [184, 132, 27];
+  const white  = [255, 255, 255];
+  const ink    = [6, 20, 41];
+
+  // ── Header bar ───────────────────────────────────────────────────────────────
+  doc.setFillColor(...navy);
+  doc.rect(0, 0, W, 30, 'F');
+
+  // Company name — times bold mimics the app's Cormorant Garamond serif
+  doc.setFont('times', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(...white);
+  doc.text('Radian H.A. Limited', M, 14);
+
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text('Training Operations', 14, 17);
-  doc.setFontSize(9);
-  doc.text(`Statement date: ${today}`, 135, 14);
+  doc.setFontSize(7);
+  doc.setTextColor(160, 190, 225);
+  doc.text('T R A I N I N G   O P E R A T I O N S', M, 23);
 
-  // Title
-  doc.setTextColor(20, 20, 20);
+  // Right: document label + date
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('Payment Statement', 14, 36);
-  doc.setDrawColor(200, 190, 175);
-  doc.setLineWidth(0.4);
-  doc.line(14, 39, 196, 39);
+  doc.setFontSize(8.5);
+  doc.setTextColor(...orange);
+  doc.text('PAYMENT STATEMENT', W - M, 13, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(160, 190, 225);
+  doc.text(today, W - M, 22, { align: 'right' });
 
-  // Trainee details block (two columns)
-  const details = [
-    ['Trainee Name',     trainee.name],
-    ['Company',          trainee.company || 'Individual'],
-    ['Phone',            trainee.phone || '—'],
-    ['Email',            trainee.email || '—'],
-    ['Course',           course.name],
-    ['Registration Date', RD.fmtDate(trainee.registrationDate)],
-    ['Payment Method',   trainee.paymentMethod || '—'],
-  ];
+  // Orange accent rule under header
+  doc.setFillColor(...orange);
+  doc.rect(0, 30, W, 2.5, 'F');
 
-  let y = 47;
-  doc.setFontSize(9);
-  details.forEach(([label, value]) => {
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(100, 90, 80);
-    doc.text(label, 14, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(20, 20, 20);
-    doc.text(String(value), 65, y);
-    y += 6.5;
-  });
+  // ── Trainee identity ──────────────────────────────────────────────────────────
+  doc.setFont('times', 'bold');
+  doc.setFontSize(27);
+  doc.setTextColor(...ink);
+  doc.text(trainee.name, M, 52);
 
-  // Payment summary box
-  y += 4;
-  doc.setFillColor(248, 246, 242);
-  doc.roundedRect(14, y, 182, 28, 2, 2, 'F');
-  doc.setFontSize(9);
-  const cols3 = [
-    { label: 'Total Course Fee', value: RD.fmtMoney(trainee.totalCost), x: 24 },
-    { label: 'Amount Paid',      value: RD.fmtMoney(trainee.paid),      x: 84 },
-    { label: 'Outstanding',      value: RD.fmtMoney(balance),           x: 144 },
-  ];
-  cols3.forEach(c => {
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 90, 80);
-    doc.setFontSize(8);
-    doc.text(c.label, c.x, y + 9);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(balance > 0 && c.label === 'Outstanding' ? 180 : 18, balance > 0 && c.label === 'Outstanding' ? 40 : 30, balance > 0 && c.label === 'Outstanding' ? 40 : 60);
-    doc.text(c.value, c.x, y + 20);
-  });
-
-  // Instalment table
-  y += 36;
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.setTextColor(20, 20, 20);
-  doc.text('Instalment Schedule', 14, y);
-  y += 4;
+  doc.setTextColor(...muted);
+  doc.text([trainee.company || 'Individual', course.name].join('   ·   '), M, 61);
 
-  const schHeaders = ['#', 'Description', 'Amount (TTD)', 'Due Date', 'Status', 'Paid On', 'Method', 'Reference'];
+  doc.setDrawColor(...warm);
+  doc.setLineWidth(0.5);
+  doc.line(M, 66, W - M, 66);
+
+  // ── Payment summary boxes ─────────────────────────────────────────────────────
+  const boxY = 72;
+  const boxH = 30;
+  const boxW = (W - M * 2 - 8) / 3;
+  const summaries = [
+    { label: 'TOTAL COURSE FEE', value: RD.fmtMoney(trainee.totalCost), color: navy },
+    { label: 'AMOUNT PAID',      value: RD.fmtMoney(trainee.paid),      color: green },
+    { label: 'OUTSTANDING',      value: RD.fmtMoney(balance),           color: balance > 0 ? red : green },
+  ];
+
+  summaries.forEach((box, i) => {
+    const bx = M + i * (boxW + 4);
+    doc.setFillColor(...ivory);
+    doc.setDrawColor(...warm);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(bx, boxY, boxW, boxH, 1.5, 1.5, 'FD');
+    // orange left accent strip
+    doc.setFillColor(...orange);
+    doc.rect(bx, boxY, 3, boxH, 'F');
+    // label
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...muted);
+    doc.text(box.label, bx + 7, boxY + 10);
+    // value
+    doc.setFont('times', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(...box.color);
+    doc.text(box.value, bx + 7, boxY + 24);
+  });
+
+  // ── Trainee details (2 columns) ───────────────────────────────────────────────
+  const detY = boxY + boxH + 9;
+
+  doc.setFillColor(...warm);
+  doc.rect(M, detY, W - M * 2, 7.5, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(...muted);
+  doc.text('TRAINEE DETAILS', M + 3.5, detY + 5.2);
+
+  const leftCol  = [['PHONE', trainee.phone || '—'], ['EMAIL', trainee.email || '—']];
+  const rightCol = [['REGISTRATION DATE', RD.fmtDate(trainee.registrationDate)], ['PAYMENT METHOD', trainee.paymentMethod || '—']];
+
+  let dY = detY + 15;
+  const rH = 13;
+  const c1 = M + 3;
+  const c2 = W / 2 + 4;
+
+  leftCol.forEach(([lbl, val], i) => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...muted);
+    doc.text(lbl, c1, dY + i * rH);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...ink);
+    doc.text(val, c1, dY + i * rH + 5.5);
+  });
+  rightCol.forEach(([lbl, val], i) => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...muted);
+    doc.text(lbl, c2, dY + i * rH);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...ink);
+    doc.text(val, c2, dY + i * rH + 5.5);
+  });
+
+  // ── Instalment schedule ───────────────────────────────────────────────────────
+  const tableY = dY + leftCol.length * rH + 6;
+
+  doc.setFillColor(...warm);
+  doc.rect(M, tableY, W - M * 2, 7.5, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.setTextColor(...muted);
+  doc.text('INSTALMENT SCHEDULE', M + 3.5, tableY + 5.2);
+
+  const schHeaders = ['#', 'Description', 'Amount (TTD)', 'Due Date', 'Status', 'Paid On', 'Reference'];
   const schRows = trainee.plan.map((p, i) => [
     String(i + 1),
     p.label || `Instalment ${i + 1}`,
@@ -139,34 +204,40 @@ async function toStatementPDF(trainee) {
     RD.fmtDate(p.due),
     p.paid ? 'Paid' : (RD.daysUntil(p.due) < 0 ? `Overdue ${Math.abs(RD.daysUntil(p.due))}d` : 'Pending'),
     p.paidOn ? RD.fmtDate(p.paidOn) : '—',
-    p.method || '—',
     p.ref || '—',
   ]);
 
   autoTable(doc, {
     head: [schHeaders],
     body: schRows,
-    startY: y,
-    styles: { fontSize: 8, cellPadding: 3 },
-    headStyles: { fillColor: [18, 30, 60], textColor: 255, fontStyle: 'bold' },
-    alternateRowStyles: { fillColor: [248, 246, 242] },
-    columnStyles: { 0: { cellWidth: 8 }, 2: { halign: 'right' } },
-    margin: { left: 14, right: 14 },
+    startY: tableY + 7.5,
+    styles: { fontSize: 8, cellPadding: 3.5, textColor: ink },
+    headStyles: { fillColor: navy, textColor: white, fontStyle: 'bold', fontSize: 7.5 },
+    alternateRowStyles: { fillColor: ivory },
+    columnStyles: {
+      0: { cellWidth: 8, halign: 'center' },
+      2: { halign: 'right', fontStyle: 'bold' },
+    },
+    margin: { left: M, right: M },
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 4) {
-        const v = data.cell.raw;
-        if (v === 'Paid') data.cell.styles.textColor = [22, 110, 60];
-        else if (String(v).startsWith('Overdue')) data.cell.styles.textColor = [180, 40, 40];
+        const v = String(data.cell.raw);
+        if (v === 'Paid')                data.cell.styles.textColor = green;
+        else if (v.startsWith('Overdue')) data.cell.styles.textColor = red;
+        else                             data.cell.styles.textColor = amber;
       }
     },
   });
 
-  // Footer
+  // ── Footer bar ────────────────────────────────────────────────────────────────
   const pageH = doc.internal.pageSize.height;
+  doc.setFillColor(...navy);
+  doc.rect(0, pageH - 13, W, 13, 'F');
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.setTextColor(150, 140, 130);
-  doc.text('This is an internal payment record generated by Radian H.A. Training Operations.', 14, pageH - 8);
+  doc.setFontSize(7);
+  doc.setTextColor(160, 190, 225);
+  doc.text('Radian H.A. Limited  ·  Training Operations  ·  Internal Record', M, pageH - 4.5);
+  doc.text(`Generated ${today}`, W - M, pageH - 4.5, { align: 'right' });
 
   doc.save(`Statement_${slug}_${RD.todayISO()}.pdf`);
 }
@@ -306,156 +377,195 @@ function TraineeStatementCard({ state }) {
   })) : [];
 
   return (
-    <div className="panel" style={{ padding: "20px 24px 22px", display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Header */}
-      <div>
-        <div style={{ fontFamily: "var(--sans)", fontWeight: 600, fontSize: 15, color: "var(--navy-900)", marginBottom: 4 }}>
-          Trainee Payment Statement
+    <div style={{
+      background: "var(--paper)", border: "1px solid var(--navy-100)",
+      borderRadius: "var(--radius-lg)", overflow: "visible",
+    }}>
+      {/* Navy panel header — matches sidebar/accent language */}
+      <div style={{
+        background: "var(--navy-800)",
+        borderRadius: "var(--radius-lg) var(--radius-lg) 0 0",
+        borderBottom: "2px solid var(--orange)",
+        padding: "18px 22px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <div>
+          <div style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: "var(--orange)", marginBottom: 5, fontWeight: 600 }}>
+            Individual Export
+          </div>
+          <h3 style={{ color: "var(--ivory)", fontSize: 20, margin: 0, fontFamily: "var(--serif)", fontWeight: 500 }}>
+            Trainee Payment Statement
+          </h3>
         </div>
-        <div style={{ fontSize: 13, color: "var(--navy-500)" }}>
-          Search for a trainee and export their individual payment schedule as Excel or a branded PDF statement.
-        </div>
+        <Icon name="download" size={20} style={{ color: "rgba(255,255,255,0.25)" }}/>
       </div>
 
-      {/* Search input */}
-      <div style={{ position: "relative" }} ref={dropRef}>
-        <div className="search-bar" style={{ margin: 0 }}>
-          <Icon name="search" size={15} style={{ color: "var(--navy-400)", flexShrink: 0 }}/>
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Search by name or company…"
-            value={query}
-            onChange={e => { setQuery(e.target.value); setSelected(null); setOpen(true); }}
-            onFocus={() => query && setOpen(true)}
-            style={{ flex: 1 }}
-          />
-          {query && (
-            <button onClick={clear} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--navy-400)", display: "flex" }}>
-              <Icon name="close" size={14}/>
-            </button>
+      <div style={{ padding: "20px 22px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <p style={{ fontSize: 13, color: "var(--navy-500)", margin: 0, lineHeight: 1.55 }}>
+          Search for a trainee by name or company, preview their payment schedule, then export as Excel or a branded PDF.
+        </p>
+
+        {/* Search input */}
+        <div style={{ position: "relative" }} ref={dropRef}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            padding: "9px 13px", border: "1px solid var(--navy-100)",
+            borderRadius: "var(--radius)", background: "var(--paper)",
+          }}>
+            <Icon name="search" size={14} style={{ color: "var(--navy-400)", flexShrink: 0 }}/>
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Search by name or company…"
+              value={query}
+              onChange={e => { setQuery(e.target.value); setSelected(null); setOpen(true); }}
+              onFocus={() => query && setOpen(true)}
+              style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 13, color: "var(--navy-800)" }}
+            />
+            {query && (
+              <button onClick={clear} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "var(--navy-400)", display: "flex", lineHeight: 1 }}>
+                <Icon name="close" size={13}/>
+              </button>
+            )}
+          </div>
+
+          {/* Dropdown */}
+          {open && matches.length > 0 && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+              background: "var(--paper)", border: "1px solid var(--navy-100)",
+              borderRadius: "var(--radius)", boxShadow: "var(--shadow)", zIndex: 50, overflow: "hidden",
+            }}>
+              {matches.map(t => {
+                const bal = t.totalCost - t.paid;
+                return (
+                  <div
+                    key={t.id}
+                    className="panel-row"
+                    style={{ borderRadius: 0, cursor: "pointer", padding: "10px 14px" }}
+                    onClick={() => pick(t)}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="nm" style={{ fontSize: 13 }}>{t.name}</div>
+                      <div className="sub" style={{ fontSize: 11 }}>{t.company || "Individual"} · {RD.getCourse(t.courseId).name}</div>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: bal > 0 ? "var(--red)" : "var(--green)" }}>
+                        {bal > 0 ? `${RD.fmtMoney(bal)} owing` : "Fully paid"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--navy-400)" }}>{t.plan.length} instalment{t.plan.length !== 1 ? "s" : ""}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {open && query.trim().length > 0 && matches.length === 0 && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+              background: "var(--paper)", border: "1px solid var(--navy-100)",
+              borderRadius: "var(--radius)", padding: "14px",
+              fontSize: 13, color: "var(--navy-400)", zIndex: 50,
+            }}>
+              No trainees match "{query}"
+            </div>
           )}
         </div>
 
-        {/* Dropdown results */}
-        {open && matches.length > 0 && (
-          <div style={{
-            position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
-            background: "white", border: "1px solid var(--warm-100)", borderRadius: 6,
-            boxShadow: "0 4px 16px rgba(0,0,0,0.10)", zIndex: 50, overflow: "hidden",
-          }}>
-            {matches.map(t => {
-              const course = RD.getCourse(t.courseId);
-              const balance = t.totalCost - t.paid;
-              return (
-                <div
-                  key={t.id}
-                  className="panel-row"
-                  style={{ borderRadius: 0, cursor: "pointer", padding: "10px 14px" }}
-                  onClick={() => pick(t)}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="nm" style={{ fontSize: 13 }}>{t.name}</div>
-                    <div className="sub" style={{ fontSize: 11 }}>{t.company || "Individual"} · {course.name}</div>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: balance > 0 ? "var(--red)" : "var(--green)" }}>
-                      {balance > 0 ? `${RD.fmtMoney(balance)} outstanding` : "Fully paid"}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--navy-400)" }}>{t.plan.length} instalment{t.plan.length !== 1 ? "s" : ""}</div>
-                  </div>
+        {/* Selected trainee preview */}
+        {selected && (() => {
+          const bal = selected.totalCost - selected.paid;
+          return (
+            <div style={{ borderTop: "1px solid var(--navy-100)", paddingTop: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+
+              {/* Summary strip — navy card + stat mini-cards */}
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 10 }}>
+                <div style={{ background: "var(--navy-800)", borderRadius: "var(--radius)", padding: "12px 16px" }}>
+                  <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.16em", marginBottom: 5 }}>Course</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ivory)", lineHeight: 1.3 }}>{RD.getCourse(selected.courseId).name}</div>
+                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>{selected.company || "Individual"}</div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-
-        {open && query.trim().length > 0 && matches.length === 0 && (
-          <div style={{
-            position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
-            background: "white", border: "1px solid var(--warm-100)", borderRadius: 6,
-            padding: "14px", fontSize: 13, color: "var(--navy-400)", zIndex: 50,
-          }}>
-            No trainees match "{query}"
-          </div>
-        )}
-      </div>
-
-      {/* Selected trainee preview */}
-      {selected && (
-        <div style={{ borderTop: "1px solid var(--warm-100)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-          {/* Summary strip */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
-            {[
-              { label: "Course",    value: RD.getCourse(selected.courseId).name, full: true },
-              { label: "Total",     value: RD.fmtMoney(selected.totalCost) },
-              { label: "Paid",      value: RD.fmtMoney(selected.paid) },
-              { label: "Balance",   value: RD.fmtMoney(selected.totalCost - selected.paid),
-                color: (selected.totalCost - selected.paid) > 0 ? "var(--red)" : "var(--green)" },
-            ].map(item => (
-              <div key={item.label} style={{ background: "var(--warm-100)", borderRadius: 6, padding: "8px 12px" }}>
-                <div style={{ fontSize: 10, color: "var(--navy-400)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 3 }}>{item.label}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: item.color || "var(--navy-900)" }}>{item.value}</div>
+                {[
+                  { label: "Total Fee", value: RD.fmtMoney(selected.totalCost), color: "var(--navy-800)" },
+                  { label: "Paid",      value: RD.fmtMoney(selected.paid),      color: "var(--green)" },
+                  { label: "Balance",   value: RD.fmtMoney(bal),                color: bal > 0 ? "var(--red)" : "var(--green)" },
+                ].map(item => (
+                  <div key={item.label} style={{
+                    background: "var(--warm-100)", borderRadius: "var(--radius)",
+                    padding: "12px 14px", borderLeft: "3px solid var(--orange)",
+                  }}>
+                    <div style={{ fontSize: 9, color: "var(--navy-500)", textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 5 }}>{item.label}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: item.color, fontFamily: "var(--serif)" }}>{item.value}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Instalment mini-table */}
-          <table className="tbl" style={{ fontSize: 12 }}>
-            <thead>
-              <tr>
-                <th>#</th><th>Description</th><th>Amount</th><th>Due</th><th>Status</th><th>Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {selected.plan.map((p, i) => {
-                const overdue = !p.paid && RD.daysUntil(p.due) < 0;
-                return (
-                  <tr key={p.id || i}>
-                    <td style={{ color: "var(--navy-400)" }}>{i + 1}</td>
-                    <td>{p.label || `Instalment ${i + 1}`}</td>
-                    <td style={{ fontWeight: 500 }}>{RD.fmtMoney(p.amount)}</td>
-                    <td>{RD.fmtDate(p.due)}</td>
-                    <td>
-                      {p.paid
-                        ? <span className="pill" style={{ background: "var(--green-lt)", color: "var(--green)", fontSize: 11 }}>Paid</span>
-                        : overdue
-                          ? <span className="pill" style={{ background: "var(--red-lt)", color: "var(--red)", fontSize: 11 }}>Overdue</span>
-                          : <span className="pill" style={{ background: "var(--amber-lt)", color: "var(--amber)", fontSize: 11 }}>Pending</span>
-                      }
-                    </td>
-                    <td style={{ color: "var(--navy-400)", fontSize: 11 }}>{p.ref || "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+              {/* Instalment mini-table */}
+              <div className="panel" style={{ overflow: "hidden" }}>
+                <table className="tbl" style={{ fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 28, textAlign: "center" }}>#</th>
+                      <th>Description</th>
+                      <th>Amount</th>
+                      <th>Due</th>
+                      <th>Status</th>
+                      <th>Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selected.plan.map((p, i) => {
+                      const overdue = !p.paid && RD.daysUntil(p.due) < 0;
+                      return (
+                        <tr key={p.id || i} style={{ cursor: "default" }}>
+                          <td style={{ color: "var(--navy-400)", textAlign: "center" }}>{i + 1}</td>
+                          <td>{p.label || `Instalment ${i + 1}`}</td>
+                          <td style={{ fontWeight: 500, fontVariantNumeric: "tabular-nums" }}>{RD.fmtMoney(p.amount)}</td>
+                          <td>{RD.fmtDate(p.due)}</td>
+                          <td>
+                            {p.paid
+                              ? <span className="pill paid">Paid</span>
+                              : overdue
+                                ? <span className="pill overdue">Overdue</span>
+                                : <span className="pill pending">Pending</span>
+                            }
+                          </td>
+                          <td style={{ color: "var(--navy-400)", fontSize: 11 }}>{p.ref || "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-          {/* Export buttons */}
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-            <button
-              className="btn btn-ghost"
-              style={{ fontSize: 12, gap: 6 }}
-              disabled={busy}
-              onClick={() => run(() => toExcel(
-                `Statement_${selected.name.replace(/\s+/g,'_')}_${RD.todayISO()}.xlsx`,
-                "Payment Schedule",
-                traineeExcelRows
-              ))}
-            >
-              <Icon name="file" size={13}/> Export Excel
-            </button>
-            <button
-              className="btn btn-orange"
-              style={{ fontSize: 12, gap: 6 }}
-              disabled={busy}
-              onClick={() => run(() => toStatementPDF(selected))}
-            >
-              <Icon name="download" size={13}/> Export PDF Statement
-            </button>
-          </div>
-        </div>
-      )}
+              {/* Export buttons */}
+              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: 12, gap: 6 }}
+                  disabled={busy}
+                  onClick={() => run(() => toExcel(
+                    `Statement_${selected.name.replace(/\s+/g,'_')}_${RD.todayISO()}.xlsx`,
+                    "Payment Schedule",
+                    traineeExcelRows
+                  ))}
+                >
+                  <Icon name="file" size={13}/> Export Excel
+                </button>
+                <button
+                  className="btn btn-orange"
+                  style={{ fontSize: 12, gap: 6 }}
+                  disabled={busy}
+                  onClick={() => run(() => toStatementPDF(selected))}
+                >
+                  <Icon name="download" size={13}/> Export PDF Statement
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
     </div>
   );
 }
