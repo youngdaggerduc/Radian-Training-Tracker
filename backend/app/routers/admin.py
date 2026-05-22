@@ -4,20 +4,9 @@ from typing import Optional
 
 from app.auth import hash_password
 from app.deps import get_current_user
-from app.models import Course, Lead, Trainee, User
+from app.models import Course, User
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
-
-
-@router.delete("/wipe-demo", dependencies=[Depends(get_current_user)])
-async def wipe_demo(current_user: User = Depends(get_current_user)):
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Admin only")
-    lead_count = await Lead.all().count()
-    trainee_count = await Trainee.all().count()
-    await Lead.all().delete()
-    await Trainee.all().delete()
-    return {"deleted_leads": lead_count, "deleted_trainees": trainee_count}
 
 
 def _user_out(u: User) -> dict:
