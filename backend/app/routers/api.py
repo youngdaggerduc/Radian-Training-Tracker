@@ -4,7 +4,6 @@ from typing import Any, Optional
 
 from app.deps import get_current_user
 from app.models import Course, Lead, Trainee, User
-from app.seed import build_seed
 
 router = APIRouter(prefix="/api", tags=["api"], dependencies=[Depends(get_current_user)])
 
@@ -148,13 +147,6 @@ def course_out(c: Course) -> dict:
 
 @router.get("/state")
 async def get_state():
-    if await Lead.all().count() == 0 and await Trainee.all().count() == 0:
-        seed_leads, seed_trainees = build_seed()
-        for data in seed_leads:
-            await Lead.create(**data)
-        for data in seed_trainees:
-            await Trainee.create(**data)
-
     leads    = await Lead.all()
     trainees = await Trainee.all()
     courses  = await Course.all().order_by("provider", "name")
