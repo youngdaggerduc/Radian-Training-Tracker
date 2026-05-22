@@ -34,37 +34,48 @@ register_tortoise(
 @app.on_event("startup")
 async def seed_on_startup() -> None:
     """Seed staff accounts and course catalog on first run."""
-    from app.models import Course, User
-    from app.auth import hash_password
+    import sys
+    try:
+        from app.models import Course, User
+        from app.auth import hash_password
 
-    # ── Staff accounts ────────────────────────────────────────────────────────
-    if await User.all().count() == 0:
-        staff = [
-            {"id": "s1", "username": "pierce",  "name": "Pierce Doman",        "initials": "PD", "role": "Business Process Analyst", "is_admin": True},
-            {"id": "s2", "username": "shanice", "name": "Shanice Rattan",      "initials": "SR", "role": "Training Coordinator",      "is_admin": False},
-            {"id": "s3", "username": "kelsey",  "name": "Kelsey Ramkhelawan",  "initials": "KR", "role": "Training / Marketing",       "is_admin": False},
-            {"id": "s4", "username": "ameer",   "name": "Ameer Mohammed",      "initials": "AM", "role": "Training Assistant",         "is_admin": False},
-        ]
-        default_pw = hash_password("radian2026")
-        for u in staff:
-            await User.create(**u, hashed_password=default_pw)
+        user_count = await User.all().count()
+        print(f"[seed] users in db: {user_count}", flush=True, file=sys.stderr)
 
-    # ── Course catalog ────────────────────────────────────────────────────────
-    if await Course.all().count() == 0:
-        courses = [
-            {"id": "cisrs-l1",        "provider": "CISRS",        "name": "CISRS OSTS Scaffolder Level 1",                    "price": 8437.50, "days": 5},
-            {"id": "cisrs-l2a",       "provider": "CISRS",        "name": "CISRS OSTS Scaffolder Level 2",                    "price": 8437.50, "days": 5},
-            {"id": "cisrs-l2b",       "provider": "CISRS",        "name": "CISRS OSTS Scaffolder Level 2 (Advanced Cohort)",  "price": 9000.00, "days": 5},
-            {"id": "cisrs-basic-insp","provider": "CISRS",        "name": "CISRS OSTS Basic Scaffolder Inspection",           "price": 6750.00, "days": 3},
-            {"id": "cisrs-adv-insp",  "provider": "CISRS",        "name": "CISRS OSTS Advanced Scaffolder Inspection",        "price": 6500.00, "days": 2},
-            {"id": "cisrs-supv",      "provider": "CISRS",        "name": "CISRS OSTS Scaffolder Supervisor",                 "price": 7875.00, "days": 3},
-            {"id": "gms-wah",         "provider": "GetmieSafe",   "name": "Getmie Safe Working at Height",                   "price":  675.00, "days": 1},
-            {"id": "gms-basic-r",     "provider": "GetmieSafe",   "name": "Basic GetmieSafe Rescue Training",                "price": 1687.50, "days": 1},
-            {"id": "gms-adv-r",       "provider": "GetmieSafe",   "name": "Advanced GetmieSafe Rescue Training",             "price": 3375.00, "days": 2},
-            {"id": "gms-refresh",     "provider": "GetmieSafe",   "name": "GetmieSafe Rescue Refresher",                    "price": 1687.50, "days": 1},
-        ]
-        for c in courses:
-            await Course.create(**c)
+        if user_count == 0:
+            staff = [
+                {"id": "s1", "username": "pierce",  "name": "Pierce Doman",       "initials": "PD", "role": "Business Process Analyst", "is_admin": True},
+                {"id": "s2", "username": "shanice", "name": "Shanice Rattan",     "initials": "SR", "role": "Training Coordinator",      "is_admin": False},
+                {"id": "s3", "username": "kelsey",  "name": "Kelsey Ramkhelawan", "initials": "KR", "role": "Training / Marketing",      "is_admin": False},
+                {"id": "s4", "username": "ameer",   "name": "Ameer Mohammed",     "initials": "AM", "role": "Training Assistant",        "is_admin": False},
+            ]
+            default_pw = hash_password("radian2026")
+            for u in staff:
+                await User.create(**u, hashed_password=default_pw)
+            print(f"[seed] created {len(staff)} staff accounts", flush=True, file=sys.stderr)
+
+        course_count = await Course.all().count()
+        print(f"[seed] courses in db: {course_count}", flush=True, file=sys.stderr)
+
+        if course_count == 0:
+            courses = [
+                {"id": "cisrs-l1",         "provider": "CISRS",       "name": "CISRS OSTS Scaffolder Level 1",                   "price": 8437.50, "days": 5},
+                {"id": "cisrs-l2a",        "provider": "CISRS",       "name": "CISRS OSTS Scaffolder Level 2",                   "price": 8437.50, "days": 5},
+                {"id": "cisrs-l2b",        "provider": "CISRS",       "name": "CISRS OSTS Scaffolder Level 2 (Advanced Cohort)", "price": 9000.00, "days": 5},
+                {"id": "cisrs-basic-insp", "provider": "CISRS",       "name": "CISRS OSTS Basic Scaffolder Inspection",          "price": 6750.00, "days": 3},
+                {"id": "cisrs-adv-insp",   "provider": "CISRS",       "name": "CISRS OSTS Advanced Scaffolder Inspection",       "price": 6500.00, "days": 2},
+                {"id": "cisrs-supv",       "provider": "CISRS",       "name": "CISRS OSTS Scaffolder Supervisor",                "price": 7875.00, "days": 3},
+                {"id": "gms-wah",          "provider": "GetmieSafe",  "name": "Getmie Safe Working at Height",                  "price":  675.00, "days": 1},
+                {"id": "gms-basic-r",      "provider": "GetmieSafe",  "name": "Basic GetmieSafe Rescue Training",               "price": 1687.50, "days": 1},
+                {"id": "gms-adv-r",        "provider": "GetmieSafe",  "name": "Advanced GetmieSafe Rescue Training",            "price": 3375.00, "days": 2},
+                {"id": "gms-refresh",      "provider": "GetmieSafe",  "name": "GetmieSafe Rescue Refresher",                   "price": 1687.50, "days": 1},
+            ]
+            for c in courses:
+                await Course.create(**c)
+            print(f"[seed] created {len(courses)} courses", flush=True, file=sys.stderr)
+
+    except Exception as e:
+        print(f"[seed] ERROR: {e}", flush=True, file=sys.stderr)
 
 
 # ── Production static file serving ───────────────────────────────────────────
